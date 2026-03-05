@@ -1,20 +1,14 @@
-# 排除不需要的文件，减小 serverless function 体积
+# 排除不需要的文件，减小上传体积
 .venv/
 __pycache__/
 .pytest_cache/
 .git/
 .idea/
 .vscode/
+.kiro/
 aidlc-docs/
 scripts/
 backend/tests/
-frontend/node_modules/
-frontend/src/
-frontend/public/
-frontend/*.json
-frontend/*.ts
-frontend/*.html
 *.db
 .env
 .env.local
-.kiro/
