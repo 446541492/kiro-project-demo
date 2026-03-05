@@ -31,9 +31,6 @@ class Settings(BaseSettings):
     # CORS 配置
     CORS_ORIGINS: str = "http://localhost:5173"
 
-    # Tushare 配置
-    TUSHARE_TOKEN: str = ""
-
     @property
     def cors_origins_list(self) -> list[str]:
         """将 CORS_ORIGINS 字符串转换为列表"""

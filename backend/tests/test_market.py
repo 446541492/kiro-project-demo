@@ -1,7 +1,7 @@
 """
 行情 API 测试
 覆盖榜单、搜索、标的行情等场景
-注意: 实际 Tushare API 调用在测试中会被跳过（无 Token）
+数据源：AKShare（免费，无需 Token）
 """
 
 import pytest

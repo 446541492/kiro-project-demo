@@ -25,8 +25,7 @@ pytest==7.4.3
 pytest-asyncio==0.23.2
 httpx==0.25.2
 
-# 行情数据
-tushare==1.4.25
+# 行情数据（新浪财经，仅需 requests + pandas）
 pandas==2.0.3
 
 # 工具

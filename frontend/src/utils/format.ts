@@ -43,20 +43,18 @@ export function formatVolume(volume: number | undefined | null): string {
 
 /**
  * 格式化金额（万/亿单位）
- * @param amount - 原始金额（单位：千元）
+ * @param amount - 原始金额（单位：元）
  * @returns 带单位的字符串
  */
 export function formatAmount(amount: number | undefined | null): string {
   if (amount == null || isNaN(amount)) return '--';
-  // Tushare 金额单位为千元，转换为元
-  const yuan = amount * 1000;
-  if (yuan >= 100000000) {
-    return `${(yuan / 100000000).toFixed(2)}亿`;
+  if (amount >= 100000000) {
+    return `${(amount / 100000000).toFixed(2)}亿`;
   }
-  if (yuan >= 10000) {
-    return `${(yuan / 10000).toFixed(2)}万`;
+  if (amount >= 10000) {
+    return `${(amount / 10000).toFixed(2)}万`;
   }
-  return yuan.toFixed(0);
+  return amount.toFixed(0);
 }
 
 /**
