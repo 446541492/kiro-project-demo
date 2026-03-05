@@ -1,16 +1,17 @@
 """
 新浪财经行情客户端
 免费、无需 Token，通过 HTTP 接口获取 A 股实时行情
+使用原生 list[dict] 数据结构，无需 pandas
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
 from typing import Any, Optional
 
-import pandas as pd
 import requests
 
 logger = logging.getLogger(__name__)
@@ -45,11 +46,6 @@ class SinaClient:
         """
         统一的 HTTP 请求方法，带重试
         遇到 456 限流时加大重试间隔
-        @param url: 请求地址
-        @param max_retries: 最大重试次数
-        @param params: 查询参数
-        @param timeout: 超时秒数
-        @return: Response 对象
         """
         last_err: Optional[Exception] = None
         for attempt in range(max_retries):
@@ -62,15 +58,12 @@ class SinaClient:
                     timeout=timeout,
                 )
                 elapsed = time.time() - start
-                logger.debug(
-                    f"新浪 API 调用: {url} 耗时={elapsed:.2f}s"
-                )
+                logger.debug(f"新浪 API 调用: {url} 耗时={elapsed:.2f}s")
                 resp.raise_for_status()
                 return resp
             except requests.exceptions.HTTPError as e:
                 last_err = e
                 status = e.response.status_code if e.response is not None else 0
-                # 456 是新浪自定义限流状态码，需要更长的等待时间
                 if status == 456:
                     wait = 2.0 * (attempt + 1)
                     logger.warning(
@@ -100,7 +93,7 @@ class SinaClient:
         asc: int = 0,
         page: int = 1,
         num: int = 80,
-    ) -> pd.DataFrame:
+    ) -> list[dict]:
         """
         获取 A 股行情列表（分页）
         主域名失败时自动切换备用域名
@@ -109,7 +102,7 @@ class SinaClient:
         @param asc: 0=降序, 1=升序
         @param page: 页码
         @param num: 每页数量（最大 80）
-        @return: 行情 DataFrame
+        @return: 行情数据列表
         """
         params = {
             "page": page,
@@ -120,25 +113,24 @@ class SinaClient:
             "symbol": "",
             "_s_r_a": "page",
         }
-        # 依次尝试主域名和备用域名
         last_err: Optional[Exception] = None
         for url in SINA_LIST_URLS:
             try:
                 resp = self._call_api(url, params=params)
                 data = resp.json()
                 if not data:
-                    return pd.DataFrame()
-                df = pd.DataFrame(data)
-                # 生成 ts_code 格式（兼容现有服务层）
-                if "symbol" in df.columns:
-                    df["ts_code"] = df["symbol"].apply(self._to_ts_code)
-                return df
+                    return []
+                # 为每行生成 ts_code
+                for row in data:
+                    if "symbol" in row:
+                        row["ts_code"] = self._to_ts_code(row["symbol"])
+                return data
             except Exception as e:
                 last_err = e
                 logger.warning(f"列表接口 {url} 失败，尝试备用域名: {e}")
                 continue
         logger.error(f"所有列表接口均失败: {last_err}")
-        return pd.DataFrame()
+        return []
 
     def get_multi_page_list(
         self,
@@ -146,44 +138,39 @@ class SinaClient:
         sort: str = "changepercent",
         asc: int = 0,
         total: int = 100,
-    ) -> pd.DataFrame:
+    ) -> list[dict]:
         """
         获取多页行情数据
         @param node: 板块节点
         @param sort: 排序字段
         @param asc: 排序方向
         @param total: 需要的总条数
-        @return: 合并后的 DataFrame
+        @return: 合并后的数据列表
         """
-        frames = []
+        all_rows: list[dict] = []
         page = 1
-        collected = 0
-        while collected < total:
-            num = min(80, total - collected)
-            df = self.get_market_list(
+        while len(all_rows) < total:
+            num = min(80, total - len(all_rows))
+            rows = self.get_market_list(
                 node=node, sort=sort, asc=asc, page=page, num=num
             )
-            if df.empty:
+            if not rows:
                 break
-            frames.append(df)
-            collected += len(df)
-            if len(df) < num:
+            all_rows.extend(rows)
+            if len(rows) < num:
                 break
             page += 1
-        if not frames:
-            return pd.DataFrame()
-        return pd.concat(frames, ignore_index=True)
+        return all_rows
 
-    def get_quotes_by_symbols(self, symbols: list[str]) -> pd.DataFrame:
+    def get_quotes_by_symbols(self, symbols: list[str]) -> list[dict]:
         """
         批量获取指定标的的实时行情（通过 hq.sinajs.cn）
-        @param symbols: 标的代码列表，如 ["sh600519", "sz000001"]
-        @return: 行情 DataFrame
+        @param symbols: 标的代码列表，如 ["600519.SH", "000001.SZ"]
+        @return: 行情数据列表
         """
         if not symbols:
-            return pd.DataFrame()
+            return []
 
-        # 转换为新浪格式
         sina_symbols = [self._from_ts_code(s) for s in symbols]
         symbol_str = ",".join(sina_symbols)
 
@@ -192,7 +179,8 @@ class SinaClient:
             return self._parse_hq_response(resp.text, symbols)
         except Exception as e:
             logger.error(f"批量获取行情失败: {e}")
-            return pd.DataFrame()
+            return []
+
     def get_kline(
         self,
         symbol: str,
@@ -220,28 +208,23 @@ class SinaClient:
         try:
             resp = self._call_api(url, params=params)
             text = resp.text
-            # 解析 JSONP 响应：var _=xxx([{...}])
             start = text.find("([")
             end = text.rfind("])")
             if start == -1 or end == -1:
                 logger.warning(f"K线数据解析失败，响应格式异常: {text[:200]}")
                 return []
-            import json
             data = json.loads(text[start + 1 : end + 1])
             return data
         except Exception as e:
             logger.error(f"获取K线数据失败 {symbol}: {e}")
             return []
 
-
-    def _parse_hq_response(
-        self, text: str, ts_codes: list[str]
-    ) -> pd.DataFrame:
+    def _parse_hq_response(self, text: str, ts_codes: list[str]) -> list[dict]:
         """
         解析 hq.sinajs.cn 返回的行情数据
         格式: var hq_str_sh600519="名称,今开,昨收,当前价,...";
         """
-        rows = []
+        rows: list[dict] = []
         pattern = re.compile(r'var hq_str_(\w+)="(.*)";')
         matches = pattern.findall(text)
 
@@ -253,42 +236,32 @@ class SinaClient:
                 continue
             ts_code = ts_codes[i] if i < len(ts_codes) else self._to_ts_code(sina_code)
             try:
+                close = float(parts[3] or 0)
+                pre_close = float(parts[2] or 0)
+                change = close - pre_close
+                pct_chg = round(change / pre_close * 100, 2) if pre_close != 0 else 0
                 rows.append({
                     "ts_code": ts_code,
                     "name": parts[0],
                     "open": float(parts[1] or 0),
-                    "pre_close": float(parts[2] or 0),
-                    "close": float(parts[3] or 0),
+                    "pre_close": pre_close,
+                    "close": close,
                     "high": float(parts[4] or 0),
                     "low": float(parts[5] or 0),
                     "vol": float(parts[8] or 0),
                     "amount": float(parts[9] or 0),
+                    "change": change,
+                    "pct_chg": pct_chg,
                 })
             except (ValueError, IndexError) as e:
                 logger.warning(f"解析行情数据失败 {sina_code}: {e}")
                 continue
 
-        if not rows:
-            return pd.DataFrame()
-
-        df = pd.DataFrame(rows)
-        # 计算涨跌幅和涨跌额
-        if "close" in df.columns and "pre_close" in df.columns:
-            df["change"] = df["close"] - df["pre_close"]
-            df["pct_chg"] = df.apply(
-                lambda r: round(r["change"] / r["pre_close"] * 100, 2)
-                if r["pre_close"] != 0 else 0,
-                axis=1,
-            )
-        return df
+        return rows
 
     @staticmethod
     def _to_ts_code(sina_symbol: str) -> str:
-        """
-        新浪代码 → ts_code 格式
-        sh600519 → 600519.SH, sz000001 → 000001.SZ
-        bj920001 → 920001.BJ
-        """
+        """新浪代码 → ts_code 格式: sh600519 → 600519.SH"""
         sina_symbol = str(sina_symbol).lower()
         if sina_symbol.startswith("sh"):
             return f"{sina_symbol[2:]}.SH"
@@ -296,7 +269,6 @@ class SinaClient:
             return f"{sina_symbol[2:]}.SZ"
         elif sina_symbol.startswith("bj"):
             return f"{sina_symbol[2:]}.BJ"
-        # 纯数字代码：根据首位判断
         code = sina_symbol
         if code.startswith(("6", "9")):
             return f"{code}.SH"
@@ -308,15 +280,11 @@ class SinaClient:
 
     @staticmethod
     def _from_ts_code(ts_code: str) -> str:
-        """
-        ts_code → 新浪代码格式
-        600519.SH → sh600519, 000001.SZ → sz000001
-        """
+        """ts_code → 新浪代码格式: 600519.SH → sh600519"""
         if "." in ts_code:
             code, market = ts_code.split(".", 1)
             prefix = market.lower()
             return f"{prefix}{code}"
-        # 纯数字
         if ts_code.startswith(("6", "9")):
             return f"sh{ts_code}"
         return f"sz{ts_code}"

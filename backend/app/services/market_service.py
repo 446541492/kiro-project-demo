@@ -10,8 +10,6 @@ import logging
 import time
 from typing import Any, Optional
 
-import pandas as pd
-
 from app.clients.sina_client import sina_client
 from app.core.exceptions import AppException
 from app.schemas.market import KlineDataResponse, StockQuoteResponse, SymbolInfoResponse
@@ -80,7 +78,7 @@ def _list_row_to_quote(row: dict) -> StockQuoteResponse:
     )
 
 
-def _hq_row_to_quote(row: pd.Series) -> StockQuoteResponse:
+def _hq_row_to_quote(row: dict) -> StockQuoteResponse:
     """将 hq.sinajs.cn 解析后的一行数据转换为 StockQuoteResponse"""
     ts_code = str(row.get("ts_code", ""))
     return StockQuoteResponse(
@@ -142,7 +140,6 @@ class MarketService:
             )
         limit = min(max(1, limit), 100)
 
-        # 检查缓存
         cache_key = f"ranking:{ranking_type}:{market}:{limit}"
         cached = _get_cache(cache_key)
         if cached:
@@ -152,17 +149,16 @@ class MarketService:
             sort_field, asc = _SORT_MAP[ranking_type]
             node = _MARKET_NODE_MAP.get(market, "hs_a")
 
-            # 新浪列表接口直接支持排序和分页，一次请求搞定
-            df = sina_client.get_multi_page_list(
+            rows = sina_client.get_multi_page_list(
                 node=node, sort=sort_field, asc=asc, total=limit
             )
-            if df.empty:
+            if not rows:
                 return []
 
             result = []
-            for _, row in df.iterrows():
+            for row in rows:
                 try:
-                    result.append(_list_row_to_quote(row.to_dict()))
+                    result.append(_list_row_to_quote(row))
                 except Exception as e:
                     logger.warning(f"数据转换失败: {e}")
                     continue
@@ -205,35 +201,29 @@ class MarketService:
             return cached
 
         try:
-            # 获取股票列表用于搜索（大列表，带长缓存）
             stock_list = self._get_stock_list_cached()
-            if stock_list.empty:
+            if not stock_list:
                 return []
 
             keyword_lower = keyword.lower()
-            mask = pd.Series([False] * len(stock_list), index=stock_list.index)
-            if "code" in stock_list.columns:
-                mask = mask | stock_list["code"].str.contains(keyword_lower, na=False)
-            if "symbol" in stock_list.columns:
-                mask = mask | stock_list["symbol"].str.contains(keyword_lower, na=False)
-            if "name" in stock_list.columns:
-                mask = mask | stock_list["name"].str.contains(keyword, na=False)
+            filtered = []
+            for row in stock_list:
+                code = str(row.get("code", row.get("symbol", ""))).lower()
+                name = str(row.get("name", ""))
+                if keyword_lower in code or keyword in name:
+                    ts_code = str(row.get("ts_code", row.get("symbol", "")))
+                    filtered.append(SymbolInfoResponse(
+                        symbol=ts_code,
+                        name=name,
+                        market=_detect_market(ts_code),
+                        industry="",
+                        list_date="",
+                    ))
+                if len(filtered) >= 20:
+                    break
 
-            filtered = stock_list[mask].head(20)
-
-            result = []
-            for _, row in filtered.iterrows():
-                ts_code = str(row.get("ts_code", row.get("symbol", "")))
-                result.append(SymbolInfoResponse(
-                    symbol=ts_code,
-                    name=str(row.get("name", "")),
-                    market=_detect_market(ts_code),
-                    industry="",
-                    list_date="",
-                ))
-
-            _set_cache(cache_key, result, CACHE_TTL_SEARCH)
-            return result
+            _set_cache(cache_key, filtered, CACHE_TTL_SEARCH)
+            return filtered
 
         except AppException:
             raise
@@ -256,14 +246,13 @@ class MarketService:
             return cached
 
         try:
-            df = sina_client.get_quotes_by_symbols([symbol])
-            if df.empty:
+            rows = sina_client.get_quotes_by_symbols([symbol])
+            if not rows:
                 raise AppException(
                     detail="未找到该标的", code="SYMBOL_NOT_FOUND", status_code=404
                 )
 
-            row = df.iloc[0]
-            result = _hq_row_to_quote(row)
+            result = _hq_row_to_quote(rows[0])
             _set_cache(cache_key, result, CACHE_TTL_QUOTE)
             return result
 
@@ -287,7 +276,6 @@ class MarketService:
         if not symbols:
             return []
 
-        # 分离缓存命中和未命中
         result_map: dict[str, StockQuoteResponse] = {}
         uncached = []
         for s in symbols:
@@ -299,33 +287,32 @@ class MarketService:
 
         if uncached:
             try:
-                df = sina_client.get_quotes_by_symbols(uncached)
-                if not df.empty:
-                    for _, row in df.iterrows():
-                        q = _hq_row_to_quote(row)
-                        result_map[q.symbol] = q
-                        _set_cache(f"quote:{q.symbol}", q, CACHE_TTL_QUOTE)
+                rows = sina_client.get_quotes_by_symbols(uncached)
+                for row in rows:
+                    q = _hq_row_to_quote(row)
+                    result_map[q.symbol] = q
+                    _set_cache(f"quote:{q.symbol}", q, CACHE_TTL_QUOTE)
             except Exception as e:
                 logger.error(f"批量获取行情失败: {e}")
 
         return [result_map[s] for s in symbols if s in result_map]
 
-    def _get_stock_list_cached(self) -> pd.DataFrame:
+    def _get_stock_list_cached(self) -> list[dict]:
         """获取全量股票列表（带 24 小时缓存，用于搜索）"""
         cached = _get_cache("stock_list_all")
         if cached is not None:
             return cached
         try:
-            # 获取较大数量的股票列表用于搜索
-            df = sina_client.get_multi_page_list(
+            rows = sina_client.get_multi_page_list(
                 node="hs_a", sort="symbol", asc=1, total=6000
             )
-            if not df.empty:
-                _set_cache("stock_list_all", df, CACHE_TTL_STOCK_LIST)
-            return df
+            if rows:
+                _set_cache("stock_list_all", rows, CACHE_TTL_STOCK_LIST)
+            return rows
         except Exception as e:
             logger.error(f"获取股票列表失败: {e}")
-            return pd.DataFrame()
+            return []
+
     async def get_kline(
         self,
         symbol: str,
@@ -338,7 +325,6 @@ class MarketService:
         @param period: 周期类型 daily/weekly/monthly
         @param limit: 数据条数
         """
-        # 周期映射到新浪 scale 参数
         scale_map = {
             "daily": 240,
             "weekly": 1200,
@@ -368,7 +354,6 @@ class MarketService:
                 for item in data
             ]
 
-            # K线数据缓存 60 秒
             _set_cache(cache_key, result, 60)
             return result
 

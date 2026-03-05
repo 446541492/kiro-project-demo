@@ -12,20 +12,20 @@ pydantic==2.5.2
 pydantic-settings==2.1.0
 
 # 安全认证
-bcrypt>=4.2.0
+bcrypt==4.1.2
 PyJWT==2.8.0
 
-# 2FA 两步验证
+# 2FA 两步验证（SVG 模式，无需 Pillow）
 pyotp==2.9.0
 qrcode==7.4.2
+
+# 行情数据（HTTP 请求）
+requests>=2.31.0
 
 # 测试
 pytest==7.4.3
 pytest-asyncio==0.23.2
 httpx==0.25.2
-
-# 行情数据（新浪财经，仅需 requests + pandas）
-pandas>=2.2.0
 
 # 工具
 email-validator==2.1.0
