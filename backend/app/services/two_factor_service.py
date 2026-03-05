@@ -13,7 +13,7 @@ import string
 from datetime import datetime, timezone
 
 import pyotp
-import qrcode
+import segno
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,15 +57,9 @@ class TwoFactorService:
         @param provisioning_uri: otpauth:// URI
         @return: Base64 编码的 SVG 图片
         """
-        qr = qrcode.QRCode(version=1, box_size=10, border=4)
-        qr.add_data(provisioning_uri)
-        qr.make(fit=True)
-        # 使用 SVG 后端，无需 Pillow 依赖
-        import qrcode.image.svg
-        img = qr.make_image(image_factory=qrcode.image.svg.SvgPathImage)
-
+        qr = segno.make(provisioning_uri)
         buffer = io.BytesIO()
-        img.save(buffer)
+        qr.save(buffer, kind="svg", scale=4, border=4)
         buffer.seek(0)
         return base64.b64encode(buffer.getvalue()).decode("utf-8")
 

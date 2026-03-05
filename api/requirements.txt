@@ -1,9 +1,9 @@
 # Vercel Serverless Function 依赖
-# 已移除 pandas，所有版本均有 Python 3.12 预编译 wheel
+# 已移除 pandas，精简依赖控制在 250MB 以内
 
-# 核心框架
+# 核心框架（uvicorn 不带 standard extras，避免拉入 uvloop/httptools 等大包）
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
+uvicorn==0.24.0
 python-dotenv==1.0.0
 
 # 数据库
@@ -18,11 +18,11 @@ pydantic-settings==2.1.0
 bcrypt==4.1.2
 PyJWT==2.8.0
 
-# 2FA 两步验证（SVG 模式，无需 Pillow）
+# 2FA 两步验证（segno 纯 Python，零依赖，原生 SVG）
 pyotp==2.9.0
-qrcode==7.4.2
+segno>=1.6.0
 
-# 行情数据（HTTP 请求）
+# 行情数据
 requests>=2.31.0
 
 # 工具

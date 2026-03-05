@@ -1,0 +1,14 @@
+# 排除不需要的文件，减小 serverless function 体积
+.venv/
+__pycache__/
+.pytest_cache/
+.git/
+.idea/
+.vscode/
+aidlc-docs/
+scripts/
+backend/.pytest_cache/
+backend/tests/
+*.db
+.env
+.env.local

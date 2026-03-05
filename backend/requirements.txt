@@ -15,9 +15,9 @@ pydantic-settings==2.1.0
 bcrypt==4.1.2
 PyJWT==2.8.0
 
-# 2FA 两步验证（SVG 模式，无需 Pillow）
+# 2FA 两步验证（segno 纯 Python，零依赖，原生 SVG）
 pyotp==2.9.0
-qrcode==7.4.2
+segno>=1.6.0
 
 # 行情数据（HTTP 请求）
 requests>=2.31.0
