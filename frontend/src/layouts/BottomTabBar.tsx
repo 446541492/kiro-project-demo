@@ -1,6 +1,6 @@
 /**
  * 底部标签栏组件
- * 移动端显示，提供行情、自选、我的三个标签
+ * 移动端显示，Webull 风格紧凑底栏
  */
 
 import React from 'react';
@@ -28,9 +28,10 @@ const BottomTabBar: React.FC = () => {
         display: 'flex',
         justifyContent: 'space-around',
         alignItems: 'center',
-        height: 56,
-        borderTop: '1px solid var(--border-color, #f0f0f0)',
-        background: 'var(--bg-color, #fff)',
+        height: 52,
+        borderTop: '1px solid var(--border-color)',
+        background: 'var(--navbar-bg)',
+        backdropFilter: 'blur(12px)',
       }}
     >
       {tabs.map((tab) => {
@@ -43,17 +44,20 @@ const BottomTabBar: React.FC = () => {
             role="button"
             tabIndex={0}
             aria-label={tab.label}
+            aria-current={isActive ? 'page' : undefined}
             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 2,
+              gap: 1,
               cursor: 'pointer',
-              color: isActive ? '#1677ff' : '#999',
-              fontSize: 12,
+              color: isActive ? 'var(--accent-color)' : 'var(--text-tertiary)',
+              fontSize: 10,
+              fontWeight: isActive ? 500 : 400,
+              transition: 'color 0.2s',
             }}
           >
-            <span style={{ fontSize: 20 }}>{tab.icon}</span>
+            <span style={{ fontSize: 18 }}>{tab.icon}</span>
             <span>{tab.label}</span>
           </div>
         );

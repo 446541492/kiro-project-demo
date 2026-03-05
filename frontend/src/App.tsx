@@ -68,7 +68,22 @@ const App: React.FC = () => {
       locale={zhCN}
       theme={{
         algorithm: theme === 'dark' ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
-        token: { colorPrimary: '#1677ff' },
+        token: {
+          colorPrimary: '#3b82f6',
+          borderRadius: 8,
+          fontSize: 13,
+          colorBgContainer: theme === 'dark' ? '#1a1d26' : '#ffffff',
+          colorBgElevated: theme === 'dark' ? '#22262f' : '#f8f9fc',
+          colorBorder: theme === 'dark' ? '#2a2e39' : '#e8eaef',
+          colorText: theme === 'dark' ? '#e8eaef' : '#1a1d26',
+          colorTextSecondary: theme === 'dark' ? '#8b8fa3' : '#6b7280',
+        },
+        components: {
+          Table: {
+            headerBg: theme === 'dark' ? '#22262f' : '#f8f9fc',
+            rowHoverBg: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+          },
+        },
       }}
     >
       <AntApp>

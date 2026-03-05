@@ -1,12 +1,10 @@
 /**
  * 全局布局组件
- * 桌面端：顶部导航栏 + 内容区域
- * 移动端：内容区域 + 底部标签栏
+ * Webull 风格：紧凑导航 + 全宽内容区
  */
 
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Layout } from 'antd';
 import Navbar from './Navbar';
 import BottomTabBar from './BottomTabBar';
 
@@ -23,26 +21,21 @@ const AppLayout: React.FC = () => {
   }, []);
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       {/* 桌面端顶部导航 */}
-      {!isMobile && (
-        <Layout.Header style={{ background: 'inherit', padding: 0, height: 56, lineHeight: '56px' }}>
-          <Navbar />
-        </Layout.Header>
-      )}
+      {!isMobile && <Navbar />}
 
       {/* 内容区域 */}
-      <Layout.Content
+      <main
         style={{
-          padding: isMobile ? '16px 12px 72px' : '16px 24px',
-          maxWidth: 1200,
+          padding: isMobile ? '12px 12px 64px' : '16px 20px',
+          maxWidth: 1280,
           width: '100%',
           margin: '0 auto',
-          flex: 1,
         }}
       >
         <Outlet />
-      </Layout.Content>
+      </main>
 
       {/* 移动端底部标签栏 */}
       {isMobile && (
@@ -50,7 +43,7 @@ const AppLayout: React.FC = () => {
           <BottomTabBar />
         </div>
       )}
-    </Layout>
+    </div>
   );
 };
 
