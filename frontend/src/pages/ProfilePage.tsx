@@ -3,7 +3,7 @@
  * 用户信息展示、密码修改、2FA 管理、设备列表、退出登录
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,

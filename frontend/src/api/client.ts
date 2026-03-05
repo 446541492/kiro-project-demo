@@ -54,7 +54,7 @@ apiClient.interceptors.response.use(
     // 401 错误：尝试刷新 Token
     if (error.response?.status === 401 && !('_retry' in originalRequest)) {
       // 标记已重试，防止无限循环
-      (originalRequest as Record<string, unknown>)._retry = true;
+      (originalRequest as unknown as Record<string, unknown>)._retry = true;
 
       if (!isRefreshing) {
         isRefreshing = true;

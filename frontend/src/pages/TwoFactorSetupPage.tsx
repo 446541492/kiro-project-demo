@@ -16,7 +16,7 @@ import {
   message,
   Modal,
 } from 'antd';
-import { SafetyOutlined, QrcodeOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { SafetyOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import authApi, { type TwoFactorSetupResponse } from '@/api/auth';
 
