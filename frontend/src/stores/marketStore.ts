@@ -1,0 +1,81 @@
+/**
+ * 行情状态管理（骨架）
+ * 管理榜单数据、搜索结果、自动刷新
+ */
+
+import { create } from 'zustand';
+import apiClient from '@/api/client';
+import type { StockQuote, SymbolInfo, RankingType } from '@/types';
+
+interface MarketState {
+  // 状态
+  rankings: Record<string, StockQuote[]>;
+  searchResults: SymbolInfo[];
+  activeRankingType: RankingType;
+  loading: boolean;
+  refreshTimer: ReturnType<typeof setInterval> | null;
+
+  // 方法
+  fetchRankings: (type: RankingType, market?: string) => Promise<void>;
+  searchSymbols: (keyword: string) => Promise<void>;
+  clearSearchResults: () => void;
+  startAutoRefresh: (interval?: number) => void;
+  stopAutoRefresh: () => void;
+}
+
+export const useMarketStore = create<MarketState>((set, get) => ({
+  rankings: {},
+  searchResults: [],
+  activeRankingType: 'rise',
+  loading: false,
+  refreshTimer: null,
+
+  fetchRankings: async (type: RankingType, market?: string) => {
+    set({ loading: true, activeRankingType: type });
+    try {
+      const params: Record<string, string> = { ranking_type: type };
+      if (market) params.market = market;
+      const resp = await apiClient.get<StockQuote[]>('/api/market/rankings', { params });
+      set((state) => ({
+        rankings: { ...state.rankings, [type]: resp.data },
+      }));
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  searchSymbols: async (keyword: string) => {
+    if (!keyword.trim()) {
+      set({ searchResults: [] });
+      return;
+    }
+    set({ loading: true });
+    try {
+      const resp = await apiClient.get<SymbolInfo[]>('/api/market/search', {
+        params: { keyword },
+      });
+      set({ searchResults: resp.data });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  clearSearchResults: () => set({ searchResults: [] }),
+
+  startAutoRefresh: (interval = 30000) => {
+    const { stopAutoRefresh, fetchRankings, activeRankingType } = get();
+    stopAutoRefresh();
+    const timer = setInterval(() => {
+      fetchRankings(activeRankingType);
+    }, interval);
+    set({ refreshTimer: timer });
+  },
+
+  stopAutoRefresh: () => {
+    const { refreshTimer } = get();
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      set({ refreshTimer: null });
+    }
+  },
+}));
