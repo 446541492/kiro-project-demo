@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
 # 设置环境变量默认值（Vercel 环境中 .env 不生效，需在 Vercel 控制台配置）
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///tmp/database.db")
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:////tmp/database.db")
 
 from app.main import app  # noqa: E402
 
