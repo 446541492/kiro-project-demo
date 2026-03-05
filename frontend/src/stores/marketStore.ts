@@ -13,6 +13,7 @@ interface MarketState {
   searchResults: SymbolInfo[];
   activeRankingType: RankingType;
   loading: boolean;
+  searchLoading: boolean;
   refreshTimer: ReturnType<typeof setInterval> | null;
 
   // 方法
@@ -28,6 +29,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   searchResults: [],
   activeRankingType: 'rise',
   loading: false,
+  searchLoading: false,
   refreshTimer: null,
 
   fetchRankings: async (type: RankingType, market?: string) => {
@@ -49,14 +51,14 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       set({ searchResults: [] });
       return;
     }
-    set({ loading: true });
+    set({ searchLoading: true });
     try {
       const resp = await apiClient.get<SymbolInfo[]>('/api/market/search', {
         params: { keyword },
       });
       set({ searchResults: resp.data });
     } finally {
-      set({ loading: false });
+      set({ searchLoading: false });
     }
   },
 

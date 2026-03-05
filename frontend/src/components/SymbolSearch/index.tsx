@@ -18,7 +18,7 @@ const SymbolSearch: React.FC<SymbolSearchProps> = ({
   onSelect,
   placeholder = '搜索标的代码或名称',
 }) => {
-  const { searchResults, loading, searchSymbols, clearSearchResults } = useMarketStore();
+  const { searchResults, searchLoading, searchSymbols, clearSearchResults } = useMarketStore();
   const [keyword, setKeyword] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -82,7 +82,7 @@ const SymbolSearch: React.FC<SymbolSearchProps> = ({
             marginTop: 4,
           }}
         >
-          {loading ? (
+          {searchLoading ? (
             <div style={{ padding: 24, textAlign: 'center' }}>
               <Spin size="small" />
             </div>
