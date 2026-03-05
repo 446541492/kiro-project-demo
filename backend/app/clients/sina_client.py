@@ -17,12 +17,19 @@ logger = logging.getLogger(__name__)
 
 # 新浪财经 API 地址
 SINA_HQ_URL = "https://hq.sinajs.cn/list="
-SINA_LIST_URL = (
-    "https://vip.stock.finance.sina.com.cn"
-    "/quotes_service/api/json_v2.php"
-    "/Market_Center.getHQNodeData"
-)
-SINA_HEADERS = {"Referer": "https://finance.sina.com.cn"}
+# 列表接口：主域名 + 备用域名，456 限流时自动切换
+SINA_LIST_URLS = [
+    "https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData",
+    "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData",
+]
+SINA_HEADERS = {
+    "Referer": "https://finance.sina.com.cn",
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+}
 
 
 class SinaClient:
@@ -37,6 +44,7 @@ class SinaClient:
     ) -> requests.Response:
         """
         统一的 HTTP 请求方法，带重试
+        遇到 456 限流时加大重试间隔
         @param url: 请求地址
         @param max_retries: 最大重试次数
         @param params: 查询参数
@@ -59,6 +67,23 @@ class SinaClient:
                 )
                 resp.raise_for_status()
                 return resp
+            except requests.exceptions.HTTPError as e:
+                last_err = e
+                status = e.response.status_code if e.response is not None else 0
+                # 456 是新浪自定义限流状态码，需要更长的等待时间
+                if status == 456:
+                    wait = 2.0 * (attempt + 1)
+                    logger.warning(
+                        f"新浪 API 限流 456 (第 {attempt + 1} 次), "
+                        f"等待 {wait:.1f}s 后重试"
+                    )
+                else:
+                    wait = 0.5
+                    logger.warning(
+                        f"新浪 API HTTP {status} (第 {attempt + 1} 次): {e}"
+                    )
+                if attempt < max_retries - 1:
+                    time.sleep(wait)
             except Exception as e:
                 last_err = e
                 logger.warning(
@@ -78,6 +103,7 @@ class SinaClient:
     ) -> pd.DataFrame:
         """
         获取 A 股行情列表（分页）
+        主域名失败时自动切换备用域名
         @param node: 板块节点，hs_a=沪深A股, sh_a=沪A, sz_a=深A
         @param sort: 排序字段
         @param asc: 0=降序, 1=升序
@@ -94,19 +120,25 @@ class SinaClient:
             "symbol": "",
             "_s_r_a": "page",
         }
-        try:
-            resp = self._call_api(SINA_LIST_URL, params=params)
-            data = resp.json()
-            if not data:
-                return pd.DataFrame()
-            df = pd.DataFrame(data)
-            # 生成 ts_code 格式（兼容现有服务层）
-            if "symbol" in df.columns:
-                df["ts_code"] = df["symbol"].apply(self._to_ts_code)
-            return df
-        except Exception as e:
-            logger.error(f"获取行情列表失败: {e}")
-            return pd.DataFrame()
+        # 依次尝试主域名和备用域名
+        last_err: Optional[Exception] = None
+        for url in SINA_LIST_URLS:
+            try:
+                resp = self._call_api(url, params=params)
+                data = resp.json()
+                if not data:
+                    return pd.DataFrame()
+                df = pd.DataFrame(data)
+                # 生成 ts_code 格式（兼容现有服务层）
+                if "symbol" in df.columns:
+                    df["ts_code"] = df["symbol"].apply(self._to_ts_code)
+                return df
+            except Exception as e:
+                last_err = e
+                logger.warning(f"列表接口 {url} 失败，尝试备用域名: {e}")
+                continue
+        logger.error(f"所有列表接口均失败: {last_err}")
+        return pd.DataFrame()
 
     def get_multi_page_list(
         self,
