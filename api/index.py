@@ -21,18 +21,17 @@ os.environ.setdefault("DEBUG", "false")
 import pathlib
 pathlib.Path("/tmp").mkdir(parents=True, exist_ok=True)
 
-from app.main import app  # noqa: E402
-
 # Vercel serverless 环境不会触发 FastAPI lifespan 事件
 # 需要在模块加载时手动初始化数据库表
+import app.models  # noqa: F401, 确保所有模型被注册
 from app.models.base import Base
 from app.core.database import engine
-import app.models  # noqa: F401, 确保所有模型被注册
+from app.main import app as application  # noqa: E402
 
 _db_initialized = False
 
 
-@app.middleware("http")
+@application.middleware("http")
 async def ensure_db_middleware(request, call_next):
     """确保数据库表在首次请求前已创建"""
     global _db_initialized
@@ -43,3 +42,4 @@ async def ensure_db_middleware(request, call_next):
     return await call_next(request)
 
 # Vercel 会自动识别名为 app 的 ASGI/WSGI 应用
+app = application
