@@ -7,8 +7,14 @@ __pycache__/
 .vscode/
 aidlc-docs/
 scripts/
-backend/.pytest_cache/
 backend/tests/
+frontend/node_modules/
+frontend/src/
+frontend/public/
+frontend/*.json
+frontend/*.ts
+frontend/*.html
 *.db
 .env
 .env.local
+.kiro/
