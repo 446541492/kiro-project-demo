@@ -197,16 +197,37 @@ const WatchlistPage: React.FC = () => {
   // 空状态
   if (portfolios.length === 0 && !loading) {
     return (
-      <Card>
-        <Empty
-          image={<StarOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
-          description="还没有自选组合"
+      <>
+        <Card>
+          <Empty
+            image={<StarOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />}
+            description="还没有自选组合"
+          >
+            <Button type="primary" onClick={() => setCreateModalOpen(true)}>
+              创建第一个组合
+            </Button>
+          </Empty>
+        </Card>
+
+        {/* 创建组合弹窗 */}
+        <Modal
+          title="创建组合"
+          open={createModalOpen}
+          onOk={handleCreate}
+          onCancel={() => { setCreateModalOpen(false); setInputName(''); }}
+          okText="创建"
+          cancelText="取消"
         >
-          <Button type="primary" onClick={() => setCreateModalOpen(true)}>
-            创建第一个组合
-          </Button>
-        </Empty>
-      </Card>
+          <Input
+            placeholder="输入组合名称"
+            value={inputName}
+            onChange={(e) => setInputName(e.target.value)}
+            onPressEnter={handleCreate}
+            maxLength={50}
+            aria-label="组合名称"
+          />
+        </Modal>
+      </>
     );
   }
 

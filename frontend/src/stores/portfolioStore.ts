@@ -51,7 +51,13 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
 
   createPortfolio: async (name: string) => {
     const resp = await apiClient.post<Portfolio>('/api/portfolios', { name });
-    set((state) => ({ portfolios: [...state.portfolios, resp.data] }));
+    const newPortfolio = resp.data;
+    set((state) => ({
+      portfolios: [...state.portfolios, newPortfolio],
+      // 如果是第一个组合，自动选中
+      activePortfolioId: state.activePortfolioId ?? newPortfolio.id,
+      items: state.activePortfolioId ? state.items : [],
+    }));
   },
 
   updatePortfolio: async (id: number, name: string) => {
