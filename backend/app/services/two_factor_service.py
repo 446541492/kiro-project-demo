@@ -53,17 +53,19 @@ class TwoFactorService:
 
     def generate_qr_code(self, provisioning_uri: str) -> str:
         """
-        生成二维码图片（Base64 PNG）
+        生成二维码图片（Base64 SVG）
         @param provisioning_uri: otpauth:// URI
-        @return: Base64 编码的 PNG 图片
+        @return: Base64 编码的 SVG 图片
         """
         qr = qrcode.QRCode(version=1, box_size=10, border=4)
         qr.add_data(provisioning_uri)
         qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
+        # 使用 SVG 后端，无需 Pillow 依赖
+        import qrcode.image.svg
+        img = qr.make_image(image_factory=qrcode.image.svg.SvgPathImage)
 
         buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
+        img.save(buffer)
         buffer.seek(0)
         return base64.b64encode(buffer.getvalue()).decode("utf-8")
 

@@ -1,9 +1,9 @@
 # Vercel Serverless Function 依赖
-# 与 backend/requirements.txt 保持同步
+# 使用预编译 wheel 兼容的版本，避免 C 扩展编译问题
 
 # 核心框架
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
+uvicorn==0.24.0
 python-dotenv==1.0.0
 
 # 数据库
@@ -20,8 +20,7 @@ PyJWT==2.8.0
 
 # 2FA 两步验证
 pyotp==2.9.0
-qrcode[pil]==7.4.2
-Pillow==10.1.0
+qrcode==7.4.2
 
 # 行情数据
 pandas==2.0.3

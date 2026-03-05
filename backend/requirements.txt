@@ -17,8 +17,7 @@ PyJWT==2.8.0
 
 # 2FA 两步验证
 pyotp==2.9.0
-qrcode[pil]==7.4.2
-Pillow==10.1.0
+qrcode==7.4.2
 
 # 测试
 pytest==7.4.3

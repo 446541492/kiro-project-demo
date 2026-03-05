@@ -184,7 +184,7 @@ const TwoFactorSetupPage: React.FC = () => {
               </Typography.Paragraph>
               <div>
                 <img
-                  src={`data:image/png;base64,${setupData.qr_code}`}
+                  src={`data:image/svg+xml;base64,${setupData.qr_code}`}
                   alt="两步验证二维码"
                   style={{ width: 200, height: 200 }}
                 />
