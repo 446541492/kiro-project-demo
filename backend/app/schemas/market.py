@@ -24,6 +24,16 @@ class StockQuoteResponse(BaseModel):
     market: str = ""
 
 
+class KlineDataResponse(BaseModel):
+    """K线数据响应"""
+    day: str
+    open: str
+    high: str
+    low: str
+    close: str
+    volume: str
+
+
 class SymbolInfoResponse(BaseModel):
     """标的基础信息响应"""
     symbol: str

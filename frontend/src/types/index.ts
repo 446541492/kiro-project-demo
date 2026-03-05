@@ -131,3 +131,16 @@ export type ThemeMode = 'light' | 'dark';
 
 /** 榜单类型 */
 export type RankingType = 'rise' | 'fall' | 'volume' | 'amount' | 'turnover';
+
+/** K线数据 */
+export interface KlineData {
+  day: string;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volume: string;
+}
+
+/** K线周期类型 */
+export type KlinePeriod = 'daily' | 'weekly' | 'monthly';

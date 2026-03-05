@@ -193,6 +193,46 @@ class SinaClient:
         except Exception as e:
             logger.error(f"批量获取行情失败: {e}")
             return pd.DataFrame()
+    def get_kline(
+        self,
+        symbol: str,
+        scale: int = 240,
+        datalen: int = 120,
+    ) -> list[dict]:
+        """
+        获取K线数据（通过新浪财经K线接口）
+        @param symbol: ts_code 格式，如 600519.SH
+        @param scale: K线周期（分钟），240=日K, 1200=周K, 7200=月K
+        @param datalen: 数据条数
+        @return: K线数据列表
+        """
+        sina_symbol = self._from_ts_code(symbol)
+        url = (
+            f"https://quotes.sina.cn/cn/api/jsonp_v2.php"
+            f"/var%20_={sina_symbol}_{scale}/CN_MarketDataService.getKLineData"
+        )
+        params = {
+            "symbol": sina_symbol,
+            "scale": scale,
+            "ma": "no",
+            "datalen": datalen,
+        }
+        try:
+            resp = self._call_api(url, params=params)
+            text = resp.text
+            # 解析 JSONP 响应：var _=xxx([{...}])
+            start = text.find("([")
+            end = text.rfind("])")
+            if start == -1 or end == -1:
+                logger.warning(f"K线数据解析失败，响应格式异常: {text[:200]}")
+                return []
+            import json
+            data = json.loads(text[start + 1 : end + 1])
+            return data
+        except Exception as e:
+            logger.error(f"获取K线数据失败 {symbol}: {e}")
+            return []
+
 
     def _parse_hq_response(
         self, text: str, ts_codes: list[str]

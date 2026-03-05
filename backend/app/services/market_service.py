@@ -14,7 +14,7 @@ import pandas as pd
 
 from app.clients.sina_client import sina_client
 from app.core.exceptions import AppException
-from app.schemas.market import StockQuoteResponse, SymbolInfoResponse
+from app.schemas.market import KlineDataResponse, StockQuoteResponse, SymbolInfoResponse
 
 logger = logging.getLogger(__name__)
 
@@ -326,3 +326,56 @@ class MarketService:
         except Exception as e:
             logger.error(f"获取股票列表失败: {e}")
             return pd.DataFrame()
+    async def get_kline(
+        self,
+        symbol: str,
+        period: str = "daily",
+        limit: int = 120,
+    ) -> list[KlineDataResponse]:
+        """
+        获取K线数据
+        @param symbol: 标的代码（如 600519.SH）
+        @param period: 周期类型 daily/weekly/monthly
+        @param limit: 数据条数
+        """
+        # 周期映射到新浪 scale 参数
+        scale_map = {
+            "daily": 240,
+            "weekly": 1200,
+            "monthly": 7200,
+        }
+        scale = scale_map.get(period, 240)
+
+        cache_key = f"kline:{symbol}:{period}:{limit}"
+        cached = _get_cache(cache_key)
+        if cached:
+            return cached
+
+        try:
+            data = sina_client.get_kline(symbol, scale=scale, datalen=limit)
+            if not data:
+                return []
+
+            result = [
+                KlineDataResponse(
+                    day=item.get("day", ""),
+                    open=str(item.get("open", "0")),
+                    high=str(item.get("high", "0")),
+                    low=str(item.get("low", "0")),
+                    close=str(item.get("close", "0")),
+                    volume=str(item.get("volume", "0")),
+                )
+                for item in data
+            ]
+
+            # K线数据缓存 60 秒
+            _set_cache(cache_key, result, 60)
+            return result
+
+        except Exception as e:
+            logger.error(f"获取K线数据失败: {e}")
+            raise AppException(
+                detail="K线数据获取失败，请稍后重试",
+                code="KLINE_DATA_ERROR",
+                status_code=502,
+            )

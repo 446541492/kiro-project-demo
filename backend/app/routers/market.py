@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.deps import get_current_active_user
 from app.models.user import User
-from app.schemas.market import StockQuoteResponse, SymbolInfoResponse
+from app.schemas.market import KlineDataResponse, StockQuoteResponse, SymbolInfoResponse
 from app.services.market_service import MarketService
 
 router = APIRouter(prefix="/api/market", tags=["行情"])
@@ -48,3 +48,15 @@ async def get_quote(
     """获取单个标的详细行情"""
     service = MarketService()
     return await service.get_quote(symbol)
+
+
+@router.get("/kline/{symbol}", response_model=list[KlineDataResponse], summary="获取K线数据")
+async def get_kline(
+    symbol: str,
+    period: str = Query("daily", description="周期: daily/weekly/monthly"),
+    limit: int = Query(120, description="数据条数，最大 300"),
+    current_user: User = Depends(get_current_active_user),
+):
+    """获取标的K线数据"""
+    service = MarketService()
+    return await service.get_kline(symbol, period, min(limit, 300))

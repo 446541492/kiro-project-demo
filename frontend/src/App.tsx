@@ -14,6 +14,7 @@ import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import MarketPage from '@/pages/MarketPage';
 import WatchlistPage from '@/pages/WatchlistPage';
+import StockDetailPage from '@/pages/StockDetailPage';
 import ProfilePage from '@/pages/ProfilePage';
 import TwoFactorSetupPage from '@/pages/TwoFactorSetupPage';
 import './App.css';
@@ -81,6 +82,7 @@ const App: React.FC = () => {
               {/* 受保护路由 */}
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<MarketPage />} />
+                <Route path="/stock/:symbol" element={<StockDetailPage />} />
                 <Route path="/watchlist" element={<WatchlistPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/2fa/setup" element={<TwoFactorSetupPage />} />

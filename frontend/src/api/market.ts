@@ -4,7 +4,7 @@
  */
 
 import apiClient from '@/api/client';
-import type { StockQuote, SymbolInfo, RankingType } from '@/types';
+import type { StockQuote, SymbolInfo, RankingType, KlineData, KlinePeriod } from '@/types';
 
 const marketApi = {
   /** 获取行情榜单 */
@@ -22,6 +22,12 @@ const marketApi = {
   /** 获取单个标的行情 */
   getQuote: (symbol: string) =>
     apiClient.get<StockQuote>(`/api/market/quote/${symbol}`),
+
+  /** 获取K线数据 */
+  getKline: (symbol: string, period: KlinePeriod = 'daily', limit = 120) =>
+    apiClient.get<KlineData[]>(`/api/market/kline/${symbol}`, {
+      params: { period, limit },
+    }),
 };
 
 export default marketApi;

@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Tabs, Table, Typography, Space } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { useMarketStore } from '@/stores/marketStore';
 import SymbolSearch from '@/components/SymbolSearch';
 import AddToWatchlistModal from '@/components/AddToWatchlistModal';
@@ -25,6 +26,7 @@ const MarketPage: React.FC = () => {
   const { rankings, activeRankingType, loading, fetchRankings, startAutoRefresh, stopAutoRefresh } = useMarketStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState<SymbolInfo | null>(null);
+  const navigate = useNavigate();
 
   // 初始化加载和自动刷新
   useEffect(() => {
@@ -139,6 +141,10 @@ const MarketPage: React.FC = () => {
             size="small"
             scroll={{ x: 540 }}
             locale={{ emptyText: '暂无数据' }}
+            onRow={(record) => ({
+              onClick: () => navigate(`/stock/${encodeURIComponent(record.symbol)}`),
+              style: { cursor: 'pointer' },
+            })}
           />
         </Card>
       </Space>

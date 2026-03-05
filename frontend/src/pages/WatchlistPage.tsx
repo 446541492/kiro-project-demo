@@ -25,6 +25,7 @@ import {
   MoreOutlined,
   StarOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { usePortfolioStore } from '@/stores/portfolioStore';
 import { formatPrice, formatPercent, getPriceColorClass } from '@/utils/format';
 import type { WatchlistItem } from '@/types';
@@ -47,6 +48,7 @@ const WatchlistPage: React.FC = () => {
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [inputName, setInputName] = useState('');
   const [renameId, setRenameId] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   // 初始化加载
   useEffect(() => {
@@ -166,6 +168,7 @@ const WatchlistPage: React.FC = () => {
         >
           <DeleteOutlined
             style={{ color: '#ff4d4f', cursor: 'pointer' }}
+            onClick={(e) => e.stopPropagation()}
             aria-label={`移除 ${record.name}`}
           />
         </Popconfirm>
@@ -297,6 +300,10 @@ const WatchlistPage: React.FC = () => {
             pagination={false}
             size="small"
             scroll={{ x: 380 }}
+            onRow={(record) => ({
+              onClick: () => navigate(`/stock/${encodeURIComponent(record.symbol)}`),
+              style: { cursor: 'pointer' },
+            })}
             locale={{
               emptyText: (
                 <Empty
