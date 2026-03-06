@@ -303,6 +303,51 @@ const ProjectSummaryPage: React.FC = () => {
         </div>
       </SectionCard>
 
+      {/* 写在最后 */}
+      <SectionCard icon="💡" title="写在最后">
+        <div style={{
+          background: 'var(--bg-elevated)',
+          borderRadius: 8,
+          padding: '20px 24px',
+          fontSize: 13,
+          color: 'var(--text-secondary)',
+          lineHeight: 2,
+          borderLeft: '3px solid var(--accent-color)',
+        }}>
+          <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 15, marginBottom: 10 }}>
+            AI 是加速器，不是替代品
+          </div>
+          <div>
+            这个项目从零到上线，全程 AI 辅助，效率确实高。但冷静下来想，AI 真正做的事情是什么？
+            是帮你更快地写出你本来就知道该怎么写的代码。
+          </div>
+          <div style={{ marginTop: 10 }}>
+            Vercel 部署后数据库报错，你得知道这是 Serverless 无状态的本质问题，才能决定换成内存存储；
+            新浪 API 被封 403，你得理解频率限制的机制，才能加上请求去重；
+            刷新页面自选丢失，你得清楚 JWT 能携带数据，才想得到把快照嵌进 Token。
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>AI 加速的是你已有的能力，而不是凭空创造能力。</span>
+            它没法帮一个不懂架构的人做架构决策，也没法帮一个不理解问题本质的人排查问题。
+            每一次"让 AI 改一下"的背后，都是你在做判断、定方向。
+          </div>
+          <div style={{
+            marginTop: 14,
+            padding: '12px 16px',
+            background: 'var(--bg-card)',
+            borderRadius: 8,
+            border: '1px solid var(--border-color)',
+            color: 'var(--text-primary)',
+            fontWeight: 600,
+            fontSize: 14,
+            textAlign: 'center',
+            letterSpacing: 0.5,
+          }}>
+            你的判断力决定上限，AI 的速度决定下限
+          </div>
+        </div>
+      </SectionCard>
+
       {/* 底部 */}
       <div style={{
         textAlign: 'center',
