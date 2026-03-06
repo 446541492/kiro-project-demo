@@ -21,7 +21,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolioStore } from '@/stores/portfolioStore';
-import { formatPrice, formatPercent, getPriceColorClass } from '@/utils/format';
+import { formatPrice, formatPercent, formatVolume, formatAmount, getPriceColorClass } from '@/utils/format';
 import type { WatchlistItem } from '@/types';
 
 /** 获取涨跌幅标签样式类名 */
@@ -295,16 +295,19 @@ const WatchlistPage: React.FC = () => {
         {/* 表头 */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 0.8fr 0.8fr 36px',
-          padding: '8px 16px',
+          gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 36px',
+          padding: '8px 12px',
           background: 'var(--bg-elevated)',
-          fontSize: 12,
+          fontSize: 11,
           color: 'var(--text-tertiary)',
           fontWeight: 500,
         }}>
           <span>名称/代码</span>
           <span style={{ textAlign: 'right' }}>最新价</span>
           <span style={{ textAlign: 'right' }}>涨跌幅</span>
+          <span style={{ textAlign: 'right' }}>涨跌额</span>
+          <span style={{ textAlign: 'right' }}>成交量</span>
+          <span style={{ textAlign: 'right' }}>成交额</span>
           <span />
         </div>
 
@@ -335,8 +338,8 @@ const WatchlistPage: React.FC = () => {
               onKeyDown={(e) => e.key === 'Enter' && navigate(`/stock/${encodeURIComponent(item.symbol)}`)}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 0.8fr 0.8fr 36px',
-                padding: '10px 16px',
+                gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 36px',
+                padding: '9px 12px',
                 cursor: 'pointer',
                 borderBottom: index < items.length - 1 ? '1px solid var(--border-color)' : 'none',
                 transition: 'background 0.15s',
@@ -365,6 +368,20 @@ const WatchlistPage: React.FC = () => {
                   style={{ fontSize: 12 }}>
                   {formatPercent(item.quote?.change_percent)}
                 </span>
+              </div>
+              {/* 涨跌额 */}
+              <div className={`num-font ${getPriceColorClass(item.quote?.change_amount ?? null)}`}
+                style={{ textAlign: 'right', fontSize: 12 }}>
+                {item.quote?.change_amount != null && item.quote.change_amount > 0 ? '+' : ''}
+                {formatPrice(item.quote?.change_amount)}
+              </div>
+              {/* 成交量 */}
+              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+                {formatVolume(item.quote?.volume)}
+              </div>
+              {/* 成交额 */}
+              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+                {formatAmount(item.quote?.amount)}
               </div>
               {/* 删除 */}
               <div style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>

@@ -22,10 +22,22 @@ const rankingTabs: { key: RankingType; label: string }[] = [
   { key: 'turnover', label: '换手率' },
 ];
 
-/** 获取涨跌幅标签样式类名 */
+/** 涨跌幅标签样式 */
 const getPriceTagClass = (val: number | undefined | null): string => {
   if (val == null || val === 0) return 'price-tag-flat';
   return val > 0 ? 'price-tag-up' : 'price-tag-down';
+};
+
+/** 格式化换手率 */
+const formatTurnover = (val: number | undefined | null): string => {
+  if (val == null || isNaN(val) || val === 0) return '--';
+  return `${val.toFixed(2)}%`;
+};
+
+/** 格式化市盈率 */
+const formatPE = (val: number | undefined | null): string => {
+  if (val == null || isNaN(val) || val === 0) return '--';
+  return val.toFixed(2);
 };
 
 const MarketPage: React.FC = () => {
@@ -34,19 +46,16 @@ const MarketPage: React.FC = () => {
   const [selectedSymbol, setSelectedSymbol] = useState<SymbolInfo | null>(null);
   const navigate = useNavigate();
 
-  // 初始化加载和自动刷新
   useEffect(() => {
     fetchRankings('rise');
     startAutoRefresh(30000);
     return () => stopAutoRefresh();
   }, [fetchRankings, startAutoRefresh, stopAutoRefresh]);
 
-  /** 切换榜单 */
   const handleTabChange = (key: RankingType) => {
     fetchRankings(key);
   };
 
-  /** 打开添加到自选弹窗 */
   const handleAddToWatchlist = (record: StockQuote | SymbolInfo) => {
     setSelectedSymbol({
       symbol: record.symbol,
@@ -111,10 +120,10 @@ const MarketPage: React.FC = () => {
         {/* 表头 */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 40px',
-          padding: '8px 16px',
+          gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 0.6fr 0.6fr 36px',
+          padding: '8px 12px',
           background: 'var(--bg-elevated)',
-          fontSize: 12,
+          fontSize: 11,
           color: 'var(--text-tertiary)',
           fontWeight: 500,
         }}>
@@ -124,6 +133,8 @@ const MarketPage: React.FC = () => {
           <span style={{ textAlign: 'right' }}>涨跌额</span>
           <span style={{ textAlign: 'right' }}>成交量</span>
           <span style={{ textAlign: 'right' }}>成交额</span>
+          <span style={{ textAlign: 'right' }}>换手率</span>
+          <span style={{ textAlign: 'right' }}>市盈率</span>
           <span />
         </div>
 
@@ -146,8 +157,8 @@ const MarketPage: React.FC = () => {
               onKeyDown={(e) => e.key === 'Enter' && navigate(`/stock/${encodeURIComponent(item.symbol)}`)}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 40px',
-                padding: '10px 16px',
+                gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 0.6fr 0.6fr 36px',
+                padding: '9px 12px',
                 cursor: 'pointer',
                 borderBottom: index < currentData.length - 1 ? '1px solid var(--border-color)' : 'none',
                 transition: 'background 0.15s',
@@ -189,6 +200,14 @@ const MarketPage: React.FC = () => {
               {/* 成交额 */}
               <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
                 {formatAmount(item.amount)}
+              </div>
+              {/* 换手率 */}
+              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+                {formatTurnover(item.turnover_rate)}
+              </div>
+              {/* 市盈率 */}
+              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+                {formatPE(item.pe_ratio)}
               </div>
               {/* 添加自选 */}
               <div style={{ textAlign: 'center' }}>
