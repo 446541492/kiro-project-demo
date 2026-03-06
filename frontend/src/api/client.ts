@@ -128,7 +128,7 @@ apiClient.interceptors.response.use(
 
 // ==================== Token 管理（与 authStore 桥接） ====================
 
-let _accessToken: string | null = null;
+let _accessToken: string | null = localStorage.getItem('access_token');
 
 export function getAccessToken(): string | null {
   return _accessToken;
@@ -136,10 +136,16 @@ export function getAccessToken(): string | null {
 
 export function setAccessToken(token: string | null) {
   _accessToken = token;
+  if (token) {
+    localStorage.setItem('access_token', token);
+  } else {
+    localStorage.removeItem('access_token');
+  }
 }
 
 export function clearAuth() {
   _accessToken = null;
+  localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
 }
 
