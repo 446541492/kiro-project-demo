@@ -1,9 +1,10 @@
 /**
  * 自选页面
  * Webull 风格：紧凑组合标签、精简数据行
+ * 支持轮询刷新行情数据，数字变化时有闪烁特效
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Modal,
   Input,
@@ -30,6 +31,53 @@ const getPriceTagClass = (val: number | undefined | null): string => {
   return val > 0 ? 'price-tag-up' : 'price-tag-down';
 };
 
+/**
+ * 数字变化闪烁 Hook
+ * 对比前后数据，返回每个 symbol 对应的闪烁 CSS 类名
+ */
+function useFlashMap(items: WatchlistItem[]): Record<string, string> {
+  // 上一次的价格快照 { symbol: price }
+  const prevPricesRef = useRef<Record<string, number>>({});
+  // 当前闪烁状态
+  const [flashMap, setFlashMap] = useState<Record<string, string>>({});
+  // 清除定时器引用
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const prev = prevPricesRef.current;
+    const newFlash: Record<string, string> = {};
+    let hasChange = false;
+
+    for (const item of items) {
+      const price = item.quote?.current_price;
+      if (price == null) continue;
+      const oldPrice = prev[item.symbol];
+      if (oldPrice != null && oldPrice !== price) {
+        newFlash[item.symbol] = price > oldPrice ? 'flash-up' : 'flash-down';
+        hasChange = true;
+      }
+    }
+
+    // 更新价格快照
+    const snapshot: Record<string, number> = {};
+    for (const item of items) {
+      if (item.quote?.current_price != null) {
+        snapshot[item.symbol] = item.quote.current_price;
+      }
+    }
+    prevPricesRef.current = snapshot;
+
+    if (hasChange) {
+      setFlashMap(newFlash);
+      // 动画结束后清除 class
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setFlashMap({}), 1300);
+    }
+  }, [items]);
+
+  return flashMap;
+}
+
 const WatchlistPage: React.FC = () => {
   const {
     portfolios,
@@ -42,6 +90,8 @@ const WatchlistPage: React.FC = () => {
     deletePortfolio,
     setActivePortfolio,
     removeItem,
+    startAutoRefresh,
+    stopAutoRefresh,
   } = usePortfolioStore();
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -50,10 +100,15 @@ const WatchlistPage: React.FC = () => {
   const [renameId, setRenameId] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  // 初始化加载
+  // 数字变化闪烁
+  const flashMap = useFlashMap(items);
+
+  // 初始化加载 + 启动轮询
   useEffect(() => {
     fetchPortfolios();
-  }, [fetchPortfolios]);
+    startAutoRefresh(15000);
+    return () => stopAutoRefresh();
+  }, [fetchPortfolios, startAutoRefresh, stopAutoRefresh]);
 
   /** 创建组合 */
   const handleCreate = async () => {
@@ -112,6 +167,7 @@ const WatchlistPage: React.FC = () => {
       // 错误已在拦截器中处理
     }
   };
+
 
   // 空状态
   if (portfolios.length === 0 && !loading) {
@@ -329,76 +385,79 @@ const WatchlistPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          items.map((item: WatchlistItem, index: number) => (
-            <div
-              key={item.id}
-              onClick={() => navigate(`/stock/${encodeURIComponent(item.symbol)}`)}
-              role="row"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && navigate(`/stock/${encodeURIComponent(item.symbol)}`)}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 36px',
-                padding: '9px 12px',
-                cursor: 'pointer',
-                borderBottom: index < items.length - 1 ? '1px solid var(--border-color)' : 'none',
-                transition: 'background 0.15s',
-                alignItems: 'center',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              {/* 名称/代码 */}
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {item.name}
+          items.map((item: WatchlistItem, index: number) => {
+            const flash = flashMap[item.symbol] || '';
+            return (
+              <div
+                key={item.id}
+                onClick={() => navigate(`/stock/${encodeURIComponent(item.symbol)}`)}
+                role="row"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && navigate(`/stock/${encodeURIComponent(item.symbol)}`)}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 36px',
+                  padding: '9px 12px',
+                  cursor: 'pointer',
+                  borderBottom: index < items.length - 1 ? '1px solid var(--border-color)' : 'none',
+                  transition: 'background 0.15s',
+                  alignItems: 'center',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                {/* 名称/代码 */}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {item.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
+                    {item.symbol}
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
-                  {item.symbol}
+                {/* 最新价 — 变化时闪烁 */}
+                <div className={`num-font ${getPriceColorClass(item.quote?.change_percent ?? null)} ${flash}`}
+                  style={{ textAlign: 'right', fontSize: 13, fontWeight: 500, padding: '2px 4px' }}>
+                  {formatPrice(item.quote?.current_price)}
+                </div>
+                {/* 涨跌幅 — 变化时闪烁 */}
+                <div style={{ textAlign: 'right', padding: '2px 0' }} className={flash}>
+                  <span className={`num-font ${getPriceTagClass(item.quote?.change_percent)}`}
+                    style={{ fontSize: 12 }}>
+                    {formatPercent(item.quote?.change_percent)}
+                  </span>
+                </div>
+                {/* 涨跌额 — 变化时闪烁 */}
+                <div className={`num-font ${getPriceColorClass(item.quote?.change_amount ?? null)} ${flash}`}
+                  style={{ textAlign: 'right', fontSize: 12, padding: '2px 4px' }}>
+                  {item.quote?.change_amount != null && item.quote.change_amount > 0 ? '+' : ''}
+                  {formatPrice(item.quote?.change_amount)}
+                </div>
+                {/* 成交量 */}
+                <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {formatVolume(item.quote?.volume)}
+                </div>
+                {/* 成交额 */}
+                <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {formatAmount(item.quote?.amount)}
+                </div>
+                {/* 删除 */}
+                <div style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                  <Popconfirm
+                    title="确定移除该标的？"
+                    onConfirm={() => handleRemoveItem(item.id)}
+                    okText="移除"
+                    cancelText="取消"
+                  >
+                    <DeleteOutlined
+                      style={{ color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
+                      aria-label={`移除 ${item.name}`}
+                    />
+                  </Popconfirm>
                 </div>
               </div>
-              {/* 最新价 */}
-              <div className={`num-font ${getPriceColorClass(item.quote?.change_percent ?? null)}`}
-                style={{ textAlign: 'right', fontSize: 13, fontWeight: 500 }}>
-                {formatPrice(item.quote?.current_price)}
-              </div>
-              {/* 涨跌幅 */}
-              <div style={{ textAlign: 'right' }}>
-                <span className={`num-font ${getPriceTagClass(item.quote?.change_percent)}`}
-                  style={{ fontSize: 12 }}>
-                  {formatPercent(item.quote?.change_percent)}
-                </span>
-              </div>
-              {/* 涨跌额 */}
-              <div className={`num-font ${getPriceColorClass(item.quote?.change_amount ?? null)}`}
-                style={{ textAlign: 'right', fontSize: 12 }}>
-                {item.quote?.change_amount != null && item.quote.change_amount > 0 ? '+' : ''}
-                {formatPrice(item.quote?.change_amount)}
-              </div>
-              {/* 成交量 */}
-              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
-                {formatVolume(item.quote?.volume)}
-              </div>
-              {/* 成交额 */}
-              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
-                {formatAmount(item.quote?.amount)}
-              </div>
-              {/* 删除 */}
-              <div style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                <Popconfirm
-                  title="确定移除该标的？"
-                  onConfirm={() => handleRemoveItem(item.id)}
-                  okText="移除"
-                  cancelText="取消"
-                >
-                  <DeleteOutlined
-                    style={{ color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
-                    aria-label={`移除 ${item.name}`}
-                  />
-                </Popconfirm>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

@@ -13,6 +13,7 @@ interface PortfolioState {
   activePortfolioId: number | null;
   items: WatchlistItem[];
   loading: boolean;
+  refreshTimer: ReturnType<typeof setInterval> | null;
 
   // 方法
   fetchPortfolios: () => Promise<void>;
@@ -22,9 +23,15 @@ interface PortfolioState {
   reorderPortfolios: (ids: number[]) => Promise<void>;
   setActivePortfolio: (id: number) => void;
   fetchItems: (portfolioId: number) => Promise<void>;
+  /** 静默刷新行情数据（不触发 loading 状态） */
+  refreshItems: () => Promise<void>;
   addItem: (portfolioId: number, symbol: SymbolInfo) => Promise<void>;
   removeItem: (portfolioId: number, itemId: number) => Promise<void>;
   reorderItems: (portfolioId: number, ids: number[]) => Promise<void>;
+  /** 启动自动轮询刷新 */
+  startAutoRefresh: (interval?: number) => void;
+  /** 停止自动轮询刷新 */
+  stopAutoRefresh: () => void;
 }
 
 export const usePortfolioStore = create<PortfolioState>((set, get) => ({
@@ -32,6 +39,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   activePortfolioId: null,
   items: [],
   loading: false,
+  refreshTimer: null,
 
   fetchPortfolios: async () => {
     set({ loading: true });
@@ -95,6 +103,34 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
       set({ items: resp.data });
     } finally {
       set({ loading: false });
+    }
+  },
+
+  refreshItems: async () => {
+    const { activePortfolioId } = get();
+    if (!activePortfolioId) return;
+    try {
+      const resp = await apiClient.get<WatchlistItem[]>(`/api/portfolios/${activePortfolioId}/items`);
+      set({ items: resp.data });
+    } catch {
+      // 静默刷新失败不提示
+    }
+  },
+
+  startAutoRefresh: (interval = 15000) => {
+    const { stopAutoRefresh } = get();
+    stopAutoRefresh();
+    const timer = setInterval(() => {
+      get().refreshItems();
+    }, interval);
+    set({ refreshTimer: timer });
+  },
+
+  stopAutoRefresh: () => {
+    const { refreshTimer } = get();
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      set({ refreshTimer: null });
     }
   },
 

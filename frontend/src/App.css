@@ -222,3 +222,29 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
 }
+
+/* ==================== 数字变化闪烁动画 ==================== */
+
+/* 价格上涨闪烁 */
+@keyframes flash-up {
+  0% { background-color: transparent; }
+  20% { background-color: var(--price-up-bg); }
+  100% { background-color: transparent; }
+}
+
+/* 价格下跌闪烁 */
+@keyframes flash-down {
+  0% { background-color: transparent; }
+  20% { background-color: var(--price-down-bg); }
+  100% { background-color: transparent; }
+}
+
+.flash-up {
+  animation: flash-up 1.2s ease-out;
+  border-radius: 3px;
+}
+
+.flash-down {
+  animation: flash-down 1.2s ease-out;
+  border-radius: 3px;
+}
