@@ -28,7 +28,7 @@ from app.core.security import (
     validate_password,
     verify_password,
 )
-from app.core.memory_store import store
+from app.core.memory_store import store, UserData
 from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
@@ -268,7 +268,19 @@ class AuthService:
 
         user_id = payload.get("user_id")
         user = store.get_user_by_id(user_id)
-        if not user or not user.is_active:
+        if not user:
+            # Vercel 冷启动恢复：从 token 重建用户
+            user = UserData(
+                id=user_id,
+                username=payload.get("username", f"user_{user_id}"),
+                password_hash="",
+            )
+            store.users[user_id] = user
+            if user_id >= store._next_user_id:
+                store._next_user_id = user_id + 1
+            store.add_portfolio(user_id=user_id, name="我的自选", sort_order=0, is_default=True)
+            logger.info(f"refresh_token 恢复用户 user_id={user_id}")
+        if not user.is_active:
             raise AuthenticationError(detail="用户不存在或已被禁用", code="INVALID_TOKEN")
 
         token_data = {"user_id": user.id, "username": user.username}
