@@ -15,6 +15,8 @@ interface MarketState {
   loading: boolean;
   searchLoading: boolean;
   refreshTimer: ReturnType<typeof setInterval> | null;
+  /** 轮询请求进行中标记，防止重复发请求 */
+  _refreshing: boolean;
 
   // 方法
   fetchRankings: (type: RankingType, market?: string) => Promise<void>;
@@ -31,6 +33,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   loading: false,
   searchLoading: false,
   refreshTimer: null,
+  _refreshing: false,
 
   fetchRankings: async (type: RankingType, market?: string) => {
     set({ loading: true, activeRankingType: type });
@@ -65,10 +68,23 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   clearSearchResults: () => set({ searchResults: [] }),
 
   startAutoRefresh: (interval = 30000) => {
-    const { stopAutoRefresh, fetchRankings, activeRankingType } = get();
+    const { stopAutoRefresh } = get();
     stopAutoRefresh();
-    const timer = setInterval(() => {
-      fetchRankings(activeRankingType);
+    const timer = setInterval(async () => {
+      const { _refreshing, activeRankingType } = get();
+      if (_refreshing) return;
+      set({ _refreshing: true });
+      try {
+        const params: Record<string, string> = { ranking_type: activeRankingType };
+        const resp = await apiClient.get<StockQuote[]>('/api/market/rankings', { params });
+        set((state) => ({
+          rankings: { ...state.rankings, [activeRankingType]: resp.data },
+        }));
+      } catch {
+        // 静默刷新失败不提示
+      } finally {
+        set({ _refreshing: false });
+      }
     }, interval);
     set({ refreshTimer: timer });
   },

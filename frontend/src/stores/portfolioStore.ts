@@ -14,6 +14,8 @@ interface PortfolioState {
   items: WatchlistItem[];
   loading: boolean;
   refreshTimer: ReturnType<typeof setInterval> | null;
+  /** 轮询请求进行中标记，防止重复发请求 */
+  _refreshing: boolean;
 
   // 方法
   fetchPortfolios: () => Promise<void>;
@@ -40,6 +42,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   items: [],
   loading: false,
   refreshTimer: null,
+  _refreshing: false,
 
   fetchPortfolios: async () => {
     set({ loading: true });
@@ -107,13 +110,16 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   },
 
   refreshItems: async () => {
-    const { activePortfolioId } = get();
-    if (!activePortfolioId) return;
+    const { activePortfolioId, _refreshing } = get();
+    if (!activePortfolioId || _refreshing) return;
+    set({ _refreshing: true });
     try {
       const resp = await apiClient.get<WatchlistItem[]>(`/api/portfolios/${activePortfolioId}/items`);
       set({ items: resp.data });
     } catch {
       // 静默刷新失败不提示
+    } finally {
+      set({ _refreshing: false });
     }
   },
 
