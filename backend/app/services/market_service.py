@@ -1,7 +1,7 @@
 """
 行情服务
 处理行情榜单、标的搜索、行情查询，带内存缓存
-数据源：新浪财经（免费，无需 Token）
+数据源：新浪财经（榜单/行情/K线） + Yahoo Finance（搜索，海外可访问）
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import time
 from typing import Any, Optional
 
 from app.clients.sina_client import sina_client
+from app.clients.yahoo_client import yahoo_client
 from app.core.exceptions import AppException
 from app.schemas.market import KlineDataResponse, StockQuoteResponse, SymbolInfoResponse
 
@@ -126,7 +127,7 @@ class MarketService:
         limit: int = 20,
     ) -> list[StockQuoteResponse]:
         """
-        获取行情榜单
+        获取行情榜单（数据源：新浪财经）
         @param ranking_type: 榜单类型 (rise/fall/volume/amount/turnover)
         @param market: 市场过滤: SH/SZ
         @param limit: 返回数量，默认 20，最大 100
@@ -183,7 +184,7 @@ class MarketService:
         market: Optional[str] = None,
     ) -> list[SymbolInfoResponse]:
         """
-        搜索标的
+        搜索标的（数据源：Yahoo Finance，海外可访问）
         @param keyword: 搜索关键词
         @param market: 市场过滤
         """
@@ -201,43 +202,37 @@ class MarketService:
             return cached
 
         try:
-            stock_list = self._get_stock_list_cached()
-            if not stock_list:
-                return []
+            matches = yahoo_client.search(keyword)
+            result = [
+                SymbolInfoResponse(
+                    symbol=m["symbol"],
+                    name=m["name"],
+                    market=m["market"],
+                    industry="",
+                    list_date="",
+                )
+                for m in matches
+            ]
 
-            keyword_lower = keyword.lower()
-            filtered = []
-            for row in stock_list:
-                code = str(row.get("code", row.get("symbol", ""))).lower()
-                name = str(row.get("name", ""))
-                if keyword_lower in code or keyword in name:
-                    ts_code = str(row.get("ts_code", row.get("symbol", "")))
-                    filtered.append(SymbolInfoResponse(
-                        symbol=ts_code,
-                        name=name,
-                        market=_detect_market(ts_code),
-                        industry="",
-                        list_date="",
-                    ))
-                if len(filtered) >= 20:
-                    break
+            if market:
+                result = [r for r in result if r.symbol.endswith(f".{market}")]
 
-            _set_cache(cache_key, filtered, CACHE_TTL_SEARCH)
-            return filtered
+            _set_cache(cache_key, result, CACHE_TTL_SEARCH)
+            return result
 
         except AppException:
             raise
         except Exception as e:
             logger.error(f"搜索标的失败: {e}")
             raise AppException(
-                detail="行情数据获取失败，请稍后重试",
+                detail="搜索失败，请稍后重试",
                 code="MARKET_DATA_ERROR",
                 status_code=502,
             )
 
     async def get_quote(self, symbol: str) -> StockQuoteResponse:
         """
-        获取单个标的行情
+        获取单个标的行情（数据源：新浪财经）
         @param symbol: 标的代码（如 600519.SH）
         """
         cache_key = f"quote:{symbol}"
@@ -270,7 +265,7 @@ class MarketService:
         self, symbols: list[str]
     ) -> list[StockQuoteResponse]:
         """
-        批量获取标的行情
+        批量获取标的行情（数据源：新浪财经）
         @param symbols: 标的代码列表
         """
         if not symbols:
@@ -297,22 +292,6 @@ class MarketService:
 
         return [result_map[s] for s in symbols if s in result_map]
 
-    def _get_stock_list_cached(self) -> list[dict]:
-        """获取全量股票列表（带 24 小时缓存，用于搜索）"""
-        cached = _get_cache("stock_list_all")
-        if cached is not None:
-            return cached
-        try:
-            rows = sina_client.get_multi_page_list(
-                node="hs_a", sort="symbol", asc=1, total=6000
-            )
-            if rows:
-                _set_cache("stock_list_all", rows, CACHE_TTL_STOCK_LIST)
-            return rows
-        except Exception as e:
-            logger.error(f"获取股票列表失败: {e}")
-            return []
-
     async def get_kline(
         self,
         symbol: str,
@@ -320,7 +299,7 @@ class MarketService:
         limit: int = 120,
     ) -> list[KlineDataResponse]:
         """
-        获取K线数据
+        获取K线数据（数据源：新浪财经）
         @param symbol: 标的代码（如 600519.SH）
         @param period: 周期类型 daily/weekly/monthly
         @param limit: 数据条数
