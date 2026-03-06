@@ -68,8 +68,8 @@ def create_access_token(
     data: dict, expires_delta: timedelta | None = None
 ) -> str:
     """
-    创建 JWT Access Token
-    @param data: Token 载荷数据
+    创建 JWT Access Token（包含自选数据快照）
+    @param data: Token 载荷数据，可包含 watchlist 字段
     @param expires_delta: 自定义过期时间
     @return: 编码后的 JWT Token
     """
@@ -90,8 +90,8 @@ def create_access_token(
 
 def create_refresh_token(data: dict) -> str:
     """
-    创建 JWT Refresh Token
-    @param data: Token 载荷数据
+    创建 JWT Refresh Token（包含自选数据快照）
+    @param data: Token 载荷数据，可包含 watchlist 字段
     @return: 编码后的 JWT Token
     """
     to_encode = data.copy()
@@ -137,3 +137,35 @@ def decode_token(token: str) -> dict:
     return jwt.decode(
         token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
     )
+
+
+def build_watchlist_snapshot(user_id: int) -> list[dict]:
+    """
+    构建用户自选数据快照（用于嵌入 JWT）
+    格式: [{"id": 1, "name": "我的自选", "is_default": true, "items": [{"symbol": "600519.SH", "name": "贵州茅台", "market": "沪市"}]}]
+    """
+    from app.core.memory_store import store
+    portfolios = store.get_user_portfolios(user_id)
+    snapshot = []
+    for p in portfolios:
+        items = store.get_portfolio_items(p.id)
+        snapshot.append({
+            "id": p.id,
+            "n": p.name,           # 缩短字段名，减小 token 体积
+            "d": p.is_default,
+            "o": p.sort_order,
+            "items": [
+                {"s": i.symbol, "n": i.name, "m": i.market}
+                for i in items
+            ],
+        })
+    return snapshot
+
+
+def create_token_data_with_watchlist(user_id: int, username: str) -> dict:
+    """构建包含自选快照的 token 载荷"""
+    return {
+        "user_id": user_id,
+        "username": username,
+        "wl": build_watchlist_snapshot(user_id),
+    }

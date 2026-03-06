@@ -23,6 +23,7 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     create_2fa_temp_token,
+    create_token_data_with_watchlist,
     decode_token,
     hash_password,
     validate_password,
@@ -100,8 +101,8 @@ class AuthService:
         # 创建默认自选组合
         store.add_portfolio(user_id=user.id, name="我的自选", sort_order=0, is_default=True)
 
-        # 生成 Token
-        token_data = {"user_id": user.id, "username": user.username}
+        # 生成 Token（包含自选快照）
+        token_data = create_token_data_with_watchlist(user.id, user.username)
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
 
@@ -189,8 +190,8 @@ class AuthService:
             )
             return LoginResponse(requires_2fa=True, temp_token=temp_token)
 
-        # 生成正式 Token
-        token_data = {"user_id": user.id, "username": user.username}
+        # 生成正式 Token（包含自选快照）
+        token_data = create_token_data_with_watchlist(user.id, user.username)
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
 
@@ -238,8 +239,8 @@ class AuthService:
         if not is_valid:
             raise AuthenticationError(detail="验证码错误", code="INVALID_2FA_CODE")
 
-        # 生成正式 Token
-        token_data = {"user_id": user.id, "username": user.username}
+        # 生成正式 Token（包含自选快照）
+        token_data = create_token_data_with_watchlist(user.id, user.username)
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
 
@@ -269,21 +270,13 @@ class AuthService:
         user_id = payload.get("user_id")
         user = store.get_user_by_id(user_id)
         if not user:
-            # Vercel 冷启动恢复：从 token 重建用户
-            user = UserData(
-                id=user_id,
-                username=payload.get("username", f"user_{user_id}"),
-                password_hash="",
-            )
-            store.users[user_id] = user
-            if user_id >= store._next_user_id:
-                store._next_user_id = user_id + 1
-            store.add_portfolio(user_id=user_id, name="我的自选", sort_order=0, is_default=True)
-            logger.info(f"refresh_token 恢复用户 user_id={user_id}")
+            # Vercel 冷启动恢复：从 token 重建用户和自选数据
+            from app.core.deps import _restore_user_from_token
+            user = _restore_user_from_token(payload)
         if not user.is_active:
             raise AuthenticationError(detail="用户不存在或已被禁用", code="INVALID_TOKEN")
 
-        token_data = {"user_id": user.id, "username": user.username}
+        token_data = create_token_data_with_watchlist(user.id, user.username)
         new_access_token = create_access_token(token_data)
 
         exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)

@@ -46,7 +46,14 @@ apiClient.interceptors.request.use(
 // ==================== 响应拦截器 ====================
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // 自选变更接口会通过响应头返回包含最新自选快照的新 Token
+    const newToken = response.headers['x-new-token'];
+    if (newToken) {
+      setAccessToken(newToken);
+    }
+    return response;
+  },
   async (error: AxiosError<ApiError>) => {
     const originalRequest = error.config;
     if (!originalRequest) return Promise.reject(error);
