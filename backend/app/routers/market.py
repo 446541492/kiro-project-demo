@@ -10,7 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
 from app.core.deps import get_current_active_user
-from app.models.user import User
+from app.core.memory_store import UserData
 from app.schemas.market import KlineDataResponse, StockQuoteResponse, SymbolInfoResponse
 from app.services.market_service import MarketService
 
@@ -22,7 +22,7 @@ async def get_rankings(
     ranking_type: str = Query("rise", description="榜单类型: rise/fall/volume/amount/turnover"),
     market: Optional[str] = Query(None, description="市场过滤: SH/SZ"),
     limit: int = Query(20, description="返回数量，最大 100"),
-    current_user: User = Depends(get_current_active_user),
+    current_user: UserData = Depends(get_current_active_user),
 ):
     """获取行情榜单数据"""
     service = MarketService()
@@ -33,7 +33,7 @@ async def get_rankings(
 async def search_symbols(
     keyword: str = Query(..., description="搜索关键词"),
     market: Optional[str] = Query(None, description="市场过滤"),
-    current_user: User = Depends(get_current_active_user),
+    current_user: UserData = Depends(get_current_active_user),
 ):
     """搜索标的（支持代码、名称）"""
     service = MarketService()
@@ -43,7 +43,7 @@ async def search_symbols(
 @router.get("/quote/{symbol}", response_model=StockQuoteResponse, summary="获取标的行情")
 async def get_quote(
     symbol: str,
-    current_user: User = Depends(get_current_active_user),
+    current_user: UserData = Depends(get_current_active_user),
 ):
     """获取单个标的详细行情"""
     service = MarketService()
@@ -55,7 +55,7 @@ async def get_kline(
     symbol: str,
     period: str = Query("daily", description="周期: daily/weekly/monthly"),
     limit: int = Query(120, description="数据条数，最大 300"),
-    current_user: User = Depends(get_current_active_user),
+    current_user: UserData = Depends(get_current_active_user),
 ):
     """获取标的K线数据"""
     service = MarketService()

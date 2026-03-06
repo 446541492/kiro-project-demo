@@ -1,14 +1,9 @@
 # Vercel Serverless Function 依赖
-# 已移除 pandas，精简依赖控制在 250MB 以内
 
-# 核心框架（uvicorn 不带 standard extras，避免拉入 uvloop/httptools 等大包）
+# 核心框架
 fastapi==0.104.1
 uvicorn==0.24.0
 python-dotenv==1.0.0
-
-# 数据库
-sqlalchemy==2.0.23
-aiosqlite==0.19.0
 
 # 数据验证
 pydantic==2.5.2
@@ -18,7 +13,7 @@ pydantic-settings==2.1.0
 bcrypt==4.1.2
 PyJWT==2.8.0
 
-# 2FA 两步验证（segno 纯 Python，零依赖，原生 SVG）
+# 2FA 两步验证
 pyotp==2.9.0
 segno>=1.6.0
 
