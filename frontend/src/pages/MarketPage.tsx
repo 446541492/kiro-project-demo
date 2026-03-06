@@ -118,9 +118,7 @@ const MarketPage: React.FC = () => {
         </div>
 
         {/* 表头 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 0.6fr 0.6fr 36px',
+        <div className="market-grid" style={{
           padding: '8px 12px',
           background: 'var(--bg-elevated)',
           fontSize: 11,
@@ -130,11 +128,11 @@ const MarketPage: React.FC = () => {
           <span>名称/代码</span>
           <span style={{ textAlign: 'right' }}>最新价</span>
           <span style={{ textAlign: 'right' }}>涨跌幅</span>
-          <span style={{ textAlign: 'right' }}>涨跌额</span>
-          <span style={{ textAlign: 'right' }}>成交量</span>
-          <span style={{ textAlign: 'right' }}>成交额</span>
-          <span style={{ textAlign: 'right' }}>换手率</span>
-          <span style={{ textAlign: 'right' }}>市盈率</span>
+          <span className="col-change-amount" style={{ textAlign: 'right' }}>涨跌额</span>
+          <span className="col-volume" style={{ textAlign: 'right' }}>成交量</span>
+          <span className="col-amount" style={{ textAlign: 'right' }}>成交额</span>
+          <span className="col-turnover" style={{ textAlign: 'right' }}>换手率</span>
+          <span className="col-pe" style={{ textAlign: 'right' }}>市盈率</span>
           <span />
         </div>
 
@@ -155,9 +153,8 @@ const MarketPage: React.FC = () => {
               role="row"
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && navigate(`/stock/${encodeURIComponent(item.symbol)}`)}
+              className="market-grid"
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 0.6fr 0.6fr 36px',
                 padding: '9px 12px',
                 cursor: 'pointer',
                 borderBottom: index < currentData.length - 1 ? '1px solid var(--border-color)' : 'none',
@@ -189,24 +186,24 @@ const MarketPage: React.FC = () => {
                 </span>
               </div>
               {/* 涨跌额 */}
-              <div className={`num-font ${getPriceColorClass(item.change_amount)}`}
+              <div className={`num-font col-change-amount ${getPriceColorClass(item.change_amount)}`}
                 style={{ textAlign: 'right', fontSize: 12 }}>
                 {item.change_amount > 0 ? '+' : ''}{formatPrice(item.change_amount)}
               </div>
               {/* 成交量 */}
-              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+              <div className="num-font col-volume" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
                 {formatVolume(item.volume)}
               </div>
               {/* 成交额 */}
-              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+              <div className="num-font col-amount" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
                 {formatAmount(item.amount)}
               </div>
               {/* 换手率 */}
-              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+              <div className="num-font col-turnover" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
                 {formatTurnover(item.turnover_rate)}
               </div>
               {/* 市盈率 */}
-              <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+              <div className="num-font col-pe" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
                 {formatPE(item.pe_ratio)}
               </div>
               {/* 添加自选 */}

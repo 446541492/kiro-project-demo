@@ -248,3 +248,35 @@ body {
   animation: flash-down 1.2s ease-out;
   border-radius: 3px;
 }
+
+/* ==================== 响应式表格：移动端隐藏次要列 ==================== */
+
+/* 桌面端 grid 布局 — 行情页 9 列 */
+.market-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 0.6fr 0.6fr 36px;
+}
+
+/* 桌面端 grid 布局 — 自选页 7 列 */
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 36px;
+}
+
+/* 移动端隐藏的列 */
+@media (max-width: 768px) {
+  .market-grid {
+    grid-template-columns: 1.2fr 0.8fr 0.8fr 36px;
+  }
+  .watchlist-grid {
+    grid-template-columns: 1.2fr 0.8fr 0.8fr 36px;
+  }
+  /* 隐藏次要列：涨跌额、成交量、成交额、换手率、市盈率 */
+  .col-change-amount,
+  .col-volume,
+  .col-amount,
+  .col-turnover,
+  .col-pe {
+    display: none;
+  }
+}

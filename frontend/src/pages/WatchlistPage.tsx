@@ -349,9 +349,7 @@ const WatchlistPage: React.FC = () => {
         </div>
 
         {/* 表头 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 36px',
+        <div className="watchlist-grid" style={{
           padding: '8px 12px',
           background: 'var(--bg-elevated)',
           fontSize: 11,
@@ -361,9 +359,9 @@ const WatchlistPage: React.FC = () => {
           <span>名称/代码</span>
           <span style={{ textAlign: 'right' }}>最新价</span>
           <span style={{ textAlign: 'right' }}>涨跌幅</span>
-          <span style={{ textAlign: 'right' }}>涨跌额</span>
-          <span style={{ textAlign: 'right' }}>成交量</span>
-          <span style={{ textAlign: 'right' }}>成交额</span>
+          <span className="col-change-amount" style={{ textAlign: 'right' }}>涨跌额</span>
+          <span className="col-volume" style={{ textAlign: 'right' }}>成交量</span>
+          <span className="col-amount" style={{ textAlign: 'right' }}>成交额</span>
           <span />
         </div>
 
@@ -394,9 +392,8 @@ const WatchlistPage: React.FC = () => {
                 role="row"
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && navigate(`/stock/${encodeURIComponent(item.symbol)}`)}
+                className="watchlist-grid"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1.2fr 0.7fr 0.7fr 0.7fr 0.8fr 0.8fr 36px',
                   padding: '9px 12px',
                   cursor: 'pointer',
                   borderBottom: index < items.length - 1 ? '1px solid var(--border-color)' : 'none',
@@ -428,17 +425,17 @@ const WatchlistPage: React.FC = () => {
                   </span>
                 </div>
                 {/* 涨跌额 — 变化时闪烁 */}
-                <div className={`num-font ${getPriceColorClass(item.quote?.change_amount ?? null)} ${flash}`}
+                <div className={`num-font col-change-amount ${getPriceColorClass(item.quote?.change_amount ?? null)} ${flash}`}
                   style={{ textAlign: 'right', fontSize: 12, padding: '2px 4px' }}>
                   {item.quote?.change_amount != null && item.quote.change_amount > 0 ? '+' : ''}
                   {formatPrice(item.quote?.change_amount)}
                 </div>
                 {/* 成交量 */}
-                <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+                <div className="num-font col-volume" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
                   {formatVolume(item.quote?.volume)}
                 </div>
                 {/* 成交额 */}
-                <div className="num-font" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
+                <div className="num-font col-amount" style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-secondary)' }}>
                   {formatAmount(item.quote?.amount)}
                 </div>
                 {/* 删除 */}
