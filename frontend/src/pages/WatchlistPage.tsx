@@ -106,7 +106,7 @@ const WatchlistPage: React.FC = () => {
   // 初始化加载 + 启动轮询
   useEffect(() => {
     fetchPortfolios();
-    startAutoRefresh(5000);
+    startAutoRefresh(30000);
     return () => stopAutoRefresh();
   }, [fetchPortfolios, startAutoRefresh, stopAutoRefresh]);
 
