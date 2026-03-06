@@ -27,7 +27,8 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  isAuthenticated: false,
+  // 初始化时检查 localStorage 是否有 token，避免刷新页面闪烁到登录页
+  isAuthenticated: !!localStorage.getItem('access_token'),
   is2FARequired: false,
   tempToken: null,
   loading: false,
