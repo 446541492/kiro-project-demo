@@ -25,21 +25,32 @@ def _restore_user_from_token(payload: dict) -> UserData:
     user_id = payload["user_id"]
     username = payload.get("username", f"user_{user_id}")
 
-    # 恢复用户
-    user = UserData(id=user_id, username=username, password_hash="")
-    store.users[user_id] = user
-    if user_id >= store._next_user_id:
-        store._next_user_id = user_id + 1
+    # 恢复用户（如果已存在则复用）
+    user = store.get_user_by_id(user_id)
+    if not user:
+        user = UserData(id=user_id, username=username, password_hash="")
+        store.users[user_id] = user
+        if user_id >= store._next_user_id:
+            store._next_user_id = user_id + 1
+
+    # 检查该用户是否已有组合数据，有则跳过恢复
+    existing_portfolios = store.get_user_portfolios(user_id)
+    if existing_portfolios:
+        logger.info(f"用户 user_id={user_id} 已有 {len(existing_portfolios)} 个组合，跳过恢复")
+        return user
 
     # 从 token 恢复自选数据
     watchlist_data = payload.get("wl", [])
     if watchlist_data:
         for p_data in watchlist_data:
+            # 使用 token 中记录的原始 id，保持前后端 id 一致
+            original_id = p_data.get("id")
             portfolio = store.add_portfolio(
                 user_id=user_id,
                 name=p_data.get("n", "我的自选"),
                 sort_order=p_data.get("o", 0),
                 is_default=p_data.get("d", False),
+                restore_id=original_id,
             )
             for item_data in p_data.get("items", []):
                 store.add_watchlist_item(
@@ -90,6 +101,9 @@ async def get_current_user(
     user = store.get_user_by_id(user_id)
     if not user:
         user = _restore_user_from_token(payload)
+    else:
+        # 用户存在但组合可能丢失（同实例内其他请求只恢复了用户），补充恢复
+        _restore_user_from_token(payload)
 
     return user
 

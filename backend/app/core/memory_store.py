@@ -208,11 +208,19 @@ class MemoryStore:
     # ==================== 组合 ====================
 
     def add_portfolio(self, **kwargs) -> PortfolioData:
-        """添加组合"""
+        """添加组合，支持 restore_id 指定恢复时的原始 id"""
         with self._lock:
-            portfolio = PortfolioData(id=self._next_portfolio_id, **kwargs)
-            self.portfolios[portfolio.id] = portfolio
-            self._next_portfolio_id += 1
+            restore_id = kwargs.pop("restore_id", None)
+            if restore_id is not None:
+                # 恢复模式：使用原始 id，保持前后端一致
+                portfolio = PortfolioData(id=restore_id, **kwargs)
+                self.portfolios[restore_id] = portfolio
+                if restore_id >= self._next_portfolio_id:
+                    self._next_portfolio_id = restore_id + 1
+            else:
+                portfolio = PortfolioData(id=self._next_portfolio_id, **kwargs)
+                self.portfolios[portfolio.id] = portfolio
+                self._next_portfolio_id += 1
             self._save()
             return portfolio
 
