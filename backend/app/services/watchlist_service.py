@@ -137,6 +137,7 @@ class WatchlistService:
             )
         for order, item_id in enumerate(ids):
             items[item_id].sort_order = order
+        store.save()
 
     def _verify_portfolio_ownership(self, portfolio_id: int, user_id: int):
         """验证组合归属"""

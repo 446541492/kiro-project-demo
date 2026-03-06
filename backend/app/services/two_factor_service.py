@@ -82,6 +82,7 @@ class TwoFactorService:
         recovery_codes = self.generate_recovery_codes()
         for code_str in recovery_codes:
             store.add_recovery_code(user_id=user.id, code=code_str)
+        store.save()
 
         logger.info(f"用户启用 2FA user_id={user.id}")
         return recovery_codes
@@ -97,6 +98,7 @@ class TwoFactorService:
         user.is_2fa_enabled = False
         user.totp_secret = None
         store.delete_user_recovery_codes(user.id)
+        store.save()
         logger.info(f"用户禁用 2FA user_id={user.id}")
 
     def verify_code(self, user: UserData, code: str) -> bool:
@@ -108,6 +110,7 @@ class TwoFactorService:
         if rc:
             rc.is_used = True
             rc.used_at = datetime.now(timezone.utc)
+            store.save()
             logger.info(f"用户使用恢复码 user_id={user.id}")
             return True
 
@@ -129,5 +132,6 @@ class TwoFactorService:
         for code_str in recovery_codes:
             store.add_recovery_code(user_id=user.id, code=code_str)
 
+        store.save()
         logger.info(f"用户重新生成恢复码 user_id={user.id}")
         return recovery_codes

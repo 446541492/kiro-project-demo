@@ -160,16 +160,19 @@ class AuthService:
 
             if user.failed_login_count >= 5:
                 user.locked_until = now + timedelta(minutes=15)
+                store.save()
                 raise LockedError(
                     detail="连续登录失败过多，账户已锁定 15 分钟",
                     code="ACCOUNT_LOCKED",
                 )
             elif user.failed_login_count >= 3:
+                store.save()
                 raise PreconditionError(
                     detail="用户名或密码错误，请完成验证码验证",
                     code="CAPTCHA_REQUIRED",
                 )
             else:
+                store.save()
                 raise AuthenticationError(
                     detail="用户名或密码错误", code="INVALID_CREDENTIALS"
                 )
@@ -177,6 +180,7 @@ class AuthService:
         # 密码验证成功，重置失败计数
         user.failed_login_count = 0
         user.locked_until = None
+        store.save()
 
         # 检查 2FA 状态
         if user.is_2fa_enabled:
@@ -299,6 +303,7 @@ class AuthService:
             device.last_login_at = now
             device.ip_address = ip_address
             device.device_name = device_name
+            store.save()
         else:
             store.add_device(
                 user_id=user_id,

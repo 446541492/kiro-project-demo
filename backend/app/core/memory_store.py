@@ -6,10 +6,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
+import os
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from threading import Lock
 from typing import Optional
+
+# 持久化文件路径（Vercel /tmp 在同一实例内持久）
+_PERSIST_PATH = os.environ.get("MEMORY_STORE_PATH", "/tmp/memory_store.json")
 
 
 # ==================== 数据模型 ====================
@@ -100,6 +105,8 @@ class MemoryStore:
         self.recovery_codes: dict[int, RecoveryCodeData] = {}
         self.portfolios: dict[int, PortfolioData] = {}
         self.watchlist_items: dict[int, WatchlistItemData] = {}
+        # 启动时从 /tmp 恢复数据
+        self._load()
 
     # ==================== 用户 ====================
 
@@ -109,6 +116,7 @@ class MemoryStore:
             user = UserData(id=self._next_user_id, **kwargs)
             self.users[user.id] = user
             self._next_user_id += 1
+            self._save()
             return user
 
     def get_user_by_id(self, user_id: int) -> Optional[UserData]:
@@ -146,6 +154,7 @@ class MemoryStore:
             device = DeviceData(id=self._next_device_id, **kwargs)
             self.devices[device.id] = device
             self._next_device_id += 1
+            self._save()
             return device
 
     def get_device(self, user_id: int, device_id: str) -> Optional[DeviceData]:
@@ -169,6 +178,7 @@ class MemoryStore:
             rc = RecoveryCodeData(id=self._next_recovery_code_id, **kwargs)
             self.recovery_codes[rc.id] = rc
             self._next_recovery_code_id += 1
+            self._save()
             return rc
 
     def get_valid_recovery_code(self, user_id: int, code: str) -> Optional[RecoveryCodeData]:
@@ -193,6 +203,7 @@ class MemoryStore:
         ]
         for rc_id in to_delete:
             del self.recovery_codes[rc_id]
+        self._save()
 
     # ==================== 组合 ====================
 
@@ -202,6 +213,7 @@ class MemoryStore:
             portfolio = PortfolioData(id=self._next_portfolio_id, **kwargs)
             self.portfolios[portfolio.id] = portfolio
             self._next_portfolio_id += 1
+            self._save()
             return portfolio
 
     def get_portfolio(self, portfolio_id: int) -> Optional[PortfolioData]:
@@ -217,13 +229,13 @@ class MemoryStore:
     def delete_portfolio(self, portfolio_id: int) -> None:
         """删除组合及其标的"""
         self.portfolios.pop(portfolio_id, None)
-        # 级联删除标的
         to_delete = [
             item_id for item_id, item in self.watchlist_items.items()
             if item.portfolio_id == portfolio_id
         ]
         for item_id in to_delete:
             del self.watchlist_items[item_id]
+        self._save()
 
     # ==================== 标的 ====================
 
@@ -233,6 +245,7 @@ class MemoryStore:
             item = WatchlistItemData(id=self._next_watchlist_item_id, **kwargs)
             self.watchlist_items[item.id] = item
             self._next_watchlist_item_id += 1
+            self._save()
             return item
 
     def get_watchlist_item(self, item_id: int) -> Optional[WatchlistItemData]:
@@ -267,6 +280,101 @@ class MemoryStore:
     def delete_watchlist_item(self, item_id: int) -> None:
         """删除标的"""
         self.watchlist_items.pop(item_id, None)
+        self._save()
+
+    # ==================== 持久化 ====================
+
+    def _serialize_datetime(self, obj):
+        """将 datetime 转为 ISO 格式字符串"""
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return obj
+
+    def save(self) -> None:
+        """手动触发持久化（供服务层在直接修改对象属性后调用）"""
+        self._save()
+
+    def _save(self) -> None:
+        """将数据序列化到 /tmp 文件"""
+        try:
+            data = {
+                "counters": {
+                    "user": self._next_user_id,
+                    "device": self._next_device_id,
+                    "recovery_code": self._next_recovery_code_id,
+                    "portfolio": self._next_portfolio_id,
+                    "watchlist_item": self._next_watchlist_item_id,
+                },
+                "users": {str(k): asdict(v) for k, v in self.users.items()},
+                "devices": {str(k): asdict(v) for k, v in self.devices.items()},
+                "recovery_codes": {str(k): asdict(v) for k, v in self.recovery_codes.items()},
+                "portfolios": {str(k): asdict(v) for k, v in self.portfolios.items()},
+                "watchlist_items": {str(k): asdict(v) for k, v in self.watchlist_items.items()},
+            }
+            with open(_PERSIST_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, default=self._serialize_datetime)
+        except Exception:
+            pass  # 持久化失败不影响正常运行
+
+    def _parse_datetime(self, val) -> Optional[datetime]:
+        """将 ISO 格式字符串转回 datetime"""
+        if val is None:
+            return None
+        if isinstance(val, datetime):
+            return val
+        try:
+            return datetime.fromisoformat(val)
+        except (ValueError, TypeError):
+            return None
+
+    def _load(self) -> None:
+        """从 /tmp 文件恢复数据"""
+        try:
+            if not os.path.exists(_PERSIST_PATH):
+                return
+            with open(_PERSIST_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            # 恢复计数器
+            counters = data.get("counters", {})
+            self._next_user_id = counters.get("user", 1)
+            self._next_device_id = counters.get("device", 1)
+            self._next_recovery_code_id = counters.get("recovery_code", 1)
+            self._next_portfolio_id = counters.get("portfolio", 1)
+            self._next_watchlist_item_id = counters.get("watchlist_item", 1)
+
+            # 恢复用户
+            for k, v in data.get("users", {}).items():
+                v["locked_until"] = self._parse_datetime(v.get("locked_until"))
+                v["created_at"] = self._parse_datetime(v.get("created_at")) or datetime.now(timezone.utc)
+                v["updated_at"] = self._parse_datetime(v.get("updated_at")) or datetime.now(timezone.utc)
+                self.users[int(k)] = UserData(**v)
+
+            # 恢复设备
+            for k, v in data.get("devices", {}).items():
+                v["last_login_at"] = self._parse_datetime(v.get("last_login_at")) or datetime.now(timezone.utc)
+                v["created_at"] = self._parse_datetime(v.get("created_at")) or datetime.now(timezone.utc)
+                self.devices[int(k)] = DeviceData(**v)
+
+            # 恢复恢复码
+            for k, v in data.get("recovery_codes", {}).items():
+                v["used_at"] = self._parse_datetime(v.get("used_at"))
+                v["created_at"] = self._parse_datetime(v.get("created_at")) or datetime.now(timezone.utc)
+                self.recovery_codes[int(k)] = RecoveryCodeData(**v)
+
+            # 恢复组合
+            for k, v in data.get("portfolios", {}).items():
+                v["created_at"] = self._parse_datetime(v.get("created_at")) or datetime.now(timezone.utc)
+                v["updated_at"] = self._parse_datetime(v.get("updated_at")) or datetime.now(timezone.utc)
+                self.portfolios[int(k)] = PortfolioData(**v)
+
+            # 恢复标的
+            for k, v in data.get("watchlist_items", {}).items():
+                v["created_at"] = self._parse_datetime(v.get("created_at")) or datetime.now(timezone.utc)
+                self.watchlist_items[int(k)] = WatchlistItemData(**v)
+
+        except Exception:
+            pass  # 恢复失败则从空状态开始
 
 
 # 全局单例

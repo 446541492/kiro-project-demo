@@ -78,6 +78,7 @@ class PortfolioService:
 
         portfolio.name = data.name
         portfolio.updated_at = datetime.now(timezone.utc)
+        store.save()
 
         return PortfolioResponse(
             id=portfolio.id, name=portfolio.name, sort_order=portfolio.sort_order,
@@ -104,6 +105,7 @@ class PortfolioService:
             )
         for order, pid in enumerate(ids):
             portfolios[pid].sort_order = order
+        store.save()
 
     def _get_user_portfolio(self, portfolio_id: int, user_id: int):
         """获取并验证组合归属"""

@@ -44,6 +44,7 @@ class UserService:
             raise ConflictError(detail="新密码不能与当前密码相同", code="SAME_PASSWORD")
 
         user.password_hash = hash_password(new_password)
+        store.save()
         logger.info(f"用户修改密码成功 user_id={user.id}")
 
     async def get_devices(self, user_id: int) -> list[DeviceResponse]:
