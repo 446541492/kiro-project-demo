@@ -46,8 +46,16 @@ const AppInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   useEffect(() => {
     const init = async () => {
-      const success = await refreshToken();
-      if (success) await fetchUser();
+      const accessToken = localStorage.getItem('access_token');
+      if (accessToken) {
+        // access_token 存在，直接用它获取用户信息，不主动 refresh
+        // 避免 refresh_token 中的旧自选快照覆盖 access_token 中的新快照
+        await fetchUser();
+      } else {
+        // 没有 access_token 但可能有 refresh_token，尝试刷新
+        const success = await refreshToken();
+        if (success) await fetchUser();
+      }
     };
     init();
   }, [refreshToken, fetchUser]);
