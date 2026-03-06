@@ -27,12 +27,27 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
 )
 
+# 数据库表是否已初始化（Vercel serverless 环境可能不触发 lifespan 事件）
+_tables_created = False
+
+
+async def _ensure_tables():
+    """确保数据库表已创建（仅执行一次）"""
+    global _tables_created
+    if not _tables_created:
+        from app.models.base import Base
+        import app.models  # noqa: F401, 确保所有模型被注册
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        _tables_created = True
+
 
 async def get_db():
     """
     获取数据库会话的依赖注入函数
     每个请求创建独立会话，请求结束后自动关闭
     """
+    await _ensure_tables()
     async with AsyncSessionLocal() as session:
         try:
             yield session
