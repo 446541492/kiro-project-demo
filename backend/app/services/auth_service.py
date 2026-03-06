@@ -155,8 +155,8 @@ class AuthService:
                 detail="请完成验证码验证", code="CAPTCHA_REQUIRED"
             )
 
-        # 验证密码
-        if not verify_password(data.password, user.password_hash):
+        # 验证密码（从 Token 恢复的用户 password_hash 为空，需拒绝登录）
+        if not user.password_hash or not verify_password(data.password, user.password_hash):
             user.failed_login_count += 1
 
             if user.failed_login_count >= 5:

@@ -17,6 +17,7 @@ import WatchlistPage from '@/pages/WatchlistPage';
 import StockDetailPage from '@/pages/StockDetailPage';
 import ProfilePage from '@/pages/ProfilePage';
 import TwoFactorSetupPage from '@/pages/TwoFactorSetupPage';
+import ProjectSummaryPage from '@/pages/ProjectSummaryPage';
 import './App.css';
 
 /** 路由守卫：需要登录 */
@@ -101,6 +102,7 @@ const App: React.FC = () => {
               {/* 公开路由 */}
               <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
               <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+              <Route path="/summary" element={<ProjectSummaryPage />} />
 
               {/* 受保护路由 */}
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
