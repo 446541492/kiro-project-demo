@@ -31,7 +31,7 @@ def _make_response_with_new_token(data, user: UserData, status_code: int = 200):
     token_data = create_token_data_with_watchlist(user.id, user.username)
     new_token = create_access_token(token_data)
     if hasattr(data, "model_dump"):
-        body = data.model_dump()
+        body = data.model_dump(mode="json")
     elif isinstance(data, dict):
         body = data
     else:
